@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "273"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.1"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "274"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.2"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 273.
+- Package remains com.lumi.drive.auto; versionCode increased to 274.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -388,7 +388,7 @@ if not dashboard.is_file():
 replace_exact(
     "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityDelegate.java",
     "toolBar = a.findViewById(R.id.tool_bar);",
-    "toolBar = a.findViewById(R.id.tool_bar);\n        if (!a.isCarActivity()) {\n            toolBar.setOnLongClickListener(v -> {\n                LumiDriveDashboard.show(this);\n                return true;\n            });\n            LumiDriveDashboard.ensureLauncherButton(this);\n        }",
+    "toolBar = a.findViewById(R.id.tool_bar);\n        if (!a.isCarActivity()) {\n            toolBar.setOnLongClickListener(v -> {\n                LumiDriveDashboard.show(this);\n                return true;\n            });\n        }",
 )
 # LumiDrive 0.5: open new home when launched normally on the phone.
 # Leave Android Auto, mirroring and deep-link intent flows untouched.
@@ -525,3 +525,73 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.5.1 / 273.
 """, encoding="utf-8")
 print("LumiDrive v0.5.1 phone UI, About, and PayPal support option applied.")
+
+# LumiDrive 0.5.2: the Home shortcut belongs in the nav-bar overflow ("More")
+# with YouTube, Web Browser, and Menu — never floating above video controls.
+write_xml("fermata/src/main/res/values/lumidrive_nav.xml", """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="lumidrive_home" type="id"/>
+    <string name="lumidrive_home_title">Home</string>
+</resources>
+""")
+write_xml("fermata/src/main/res/values-ru/lumidrive_nav.xml", """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lumidrive_home_title">Главная</string>
+</resources>
+""")
+write_xml("fermata/src/main/res/drawable/lumidrive_home_icon.xml", """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#8FE7FF"
+        android:pathData="M12,2 L2,11 L4,13 L5,12.1 V21 H10 V15 H14 V21 H19 V12.1 L20,13 L22,11 Z"/>
+</vector>
+""")
+
+replace_exact(
+    nav_path,
+    'import me.aap.fermata.ui.activity.MainActivityDelegate;',
+    'import me.aap.fermata.ui.activity.MainActivityDelegate;\n'
+    'import me.aap.fermata.ui.activity.LumiDriveDashboard;',
+)
+replace_exact(
+    nav_path,
+    '\t\t\t\tcase "menu":\n'
+    '\t\t\t\t\titems.add(create(ctx, R.id.menu, me.aap.utils.R.drawable.menu, R.string.menu,',
+    '\t\t\t\tcase "menu":\n'
+    '\t\t\t\t\tif (!MainActivityDelegate.get(ctx).getAppActivity().isCarActivity()\n'
+    '\t\t\t\t\t\t\t&& !FermataApplication.get().isMirroringMode()) {\n'
+    '\t\t\t\t\t\titems.add(create(ctx, R.id.lumidrive_home, R.drawable.lumidrive_home_icon,\n'
+    '\t\t\t\t\t\t\t\tR.string.lumidrive_home_title, false));\n'
+    '\t\t\t\t\t}\n'
+    '\t\t\t\t\titems.add(create(ctx, R.id.menu, me.aap.utils.R.drawable.menu, R.string.menu,',
+)
+replace_exact(
+    nav_path,
+    'public void itemSelected(View item, int id, ActivityDelegate a) {\n'
+    '\t\tif (id == R.id.menu) {',
+    'public void itemSelected(View item, int id, ActivityDelegate a) {\n'
+    '\t\tif (id == R.id.lumidrive_home) {\n'
+    '\t\t\tLumiDriveDashboard.show(MainActivityDelegate.get(item.getContext()));\n'
+    '\t\t} else if (id == R.id.menu) {',
+)
+replace_exact(
+    nav_path,
+    'protected boolean extItemSelected(OverlayMenuItem item) {\n'
+    '\t\tif (item.getItemId() == R.id.menu) {',
+    'protected boolean extItemSelected(OverlayMenuItem item) {\n'
+    '\t\tif (item.getItemId() == R.id.lumidrive_home) {\n'
+    '\t\t\tLumiDriveDashboard.show(MainActivityDelegate.get(item.getContext()));\n'
+    '\t\t\treturn true;\n'
+    '\t\t} else if (item.getItemId() == R.id.menu) {',
+)
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.5.2 navigation convenience
+- Remove center-screen floating shortcut because it overlays video playback controls.
+- Add "Главная" / "Home" with home icon to the bottom navigation overflow popover.
+- A single tap on this popover entry opens the full-screen LumiDrive home.
+- Keep the Home entry out of Android Auto and mirroring mode.
+- Version 0.5.2 / 274, upgrading 0.5.1 / 273.
+""", encoding="utf-8")
+print("LumiDrive v0.5.2 non-obstructive Home navigation applied.")
+
