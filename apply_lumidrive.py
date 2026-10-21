@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "272"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.0"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "273"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.1"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 272.
+- Package remains com.lumi.drive.auto; versionCode increased to 273.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -388,7 +388,7 @@ if not dashboard.is_file():
 replace_exact(
     "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityDelegate.java",
     "toolBar = a.findViewById(R.id.tool_bar);",
-    "toolBar = a.findViewById(R.id.tool_bar);\n        if (!a.isCarActivity()) {\n            toolBar.setOnLongClickListener(v -> {\n                LumiDriveDashboard.show(this);\n                return true;\n            });\n        }",
+    "toolBar = a.findViewById(R.id.tool_bar);\n        if (!a.isCarActivity()) {\n            toolBar.setOnLongClickListener(v -> {\n                LumiDriveDashboard.show(this);\n                return true;\n            });\n            LumiDriveDashboard.ensureLauncherButton(this);\n        }",
 )
 # LumiDrive 0.5: open new home when launched normally on the phone.
 # Leave Android Auto, mirroring and deep-link intent flows untouched.
@@ -414,21 +414,96 @@ replace_exact(
     "\t\t\t\tgetActivityDelegate().onSuccess(MainActivityDelegate::onBackPressed);",
 )
 
-# User-facing About branding, with legally necessary upstream attribution retained.
-replace_exact(
-    "fermata/src/main/res/values/strings.xml",
-    '<H1 align="center">Fermata Media Player</H1>\n'
-    '        <p>Fermata Media Player is a free, open source audio and video player with a simple and\n'
-    '        intuitive interface.</p>\n'
-    '        <p><b>Author:</b> Andrey Pavlenko</p>\n'
-    '        <p><b>Version:</b> %1$s (%2$d)</p>\n'
-    '        <p><b>Home page:</b> <a href="%3$s">%3$s</a></p>',
-    '<H1 align="center">LumiDrive</H1>\n'
-    '        <p>Медиаплеер с IPTV, YouTube и браузером.</p>\n'
-    '        <p><b>Версия:</b> %1$s (%2$d)</p>\n'
-    '        <p><b>Основан на:</b> Fermata Media Player by Andrey Pavlenko (GPL-3.0).</p>\n'
-    '        <p><b>Исходный проект:</b> <a href="%3$s">%3$s</a></p>',
+# LumiDrive 0.5.1: override About text in ALL installed locales, not only
+# the base strings.xml. The Russian translation previously displayed Fermata.
+about_en = """<H1 align="center">LumiDrive</H1>
+        <p>LumiDrive brings IPTV, YouTube, web browsing and local media together.</p>
+        <p><b>Developer:</b> Serge Vardanyan</p>
+        <p><b>Version:</b> %1$s (%2$d)</p>
+        <p><b>Support:</b> PayPal (link coming soon)</p>
+        <hr/>
+        <p><small>Open-source notices: Based on Fermata Media Player
+        by Andrey Pavlenko and contributors (GNU GPL-3.0).
+        <a href="%3$s">Original source and license</a>.</small></p>"""
+about_ru = """<H1 align="center">LumiDrive</H1>
+        <p>LumiDrive — медиаплеер с IPTV, YouTube, браузером и медиатекой.</p>
+        <p><b>Разработчик:</b> Serge Vardanyan</p>
+        <p><b>Версия:</b> %1$s (%2$d)</p>
+        <p><b>Поддержка:</b> PayPal (ссылка будет добавлена позже)</p>
+        <hr/>
+        <p><small>Лицензии: основан на Fermata Media Player,
+        автор Андрей Павленко и участники проекта (GNU GPL-3.0).
+        <a href="%3$s">Исходный код и лицензия</a>.</small></p>"""
+about_pattern = re.compile(
+    r'(<string\s+name="about_html"[^>]*><!\[CDATA\[)(.*?)(\]\]></string>)',
+    re.S,
 )
+about_count = 0
+for path in sorted((root / "fermata/src/main/res").glob("values*/strings.xml")):
+    raw = path.read_text(encoding="utf-8")
+    translated = (path.parent.name == "values-ru")
+    label = about_ru if translated else about_en
+    changed, hits = about_pattern.subn(lambda m: m.group(1) + label + m.group(3), raw)
+    if hits > 1:
+        raise SystemExit(f"Multiple About text entries in {path}")
+    if hits:
+        path.write_text(changed, encoding="utf-8")
+        about_count += 1
+if about_count < 2:
+    raise SystemExit("About translations not found")
+
+# PayPal is the ONLY support option, intentionally inactive until the user
+# provides their actual link. Never direct to the upstream developer's wallet.
+for locale, pending in (
+    ("values", "Add your PayPal link in a future LumiDrive update."),
+    ("values-ru", "Ссылка на PayPal будет добавлена позже."),
+):
+    path = root / "fermata/src/main/res" / locale / "strings.xml"
+    raw = path.read_text(encoding="utf-8")
+    if 'name="lumidrive_paypal"' in raw:
+        raise SystemExit(f"Duplicate PayPal resource in {path}")
+    addition = ('    <string name="lumidrive_paypal">PayPal</string>\n'
+                '    <string name="lumidrive_paypal_pending">' + pending + '</string>\n')
+    if raw.count("</resources>") != 1:
+        raise SystemExit(f"Unexpected resource XML in {path}")
+    path.write_text(raw.replace("</resources>", addition + "</resources>"),
+                    encoding="utf-8")
+
+nav_path = "fermata/src/main/java/me/aap/fermata/ui/fragment/NavBarMediator.java"
+replace_exact(
+    nav_path,
+    'if (BuildConfig.AUTO) b.addItem(R.id.nav_donate, R.drawable.coffee, R.string.donate);',
+    'if (BuildConfig.AUTO && !a.isCarActivityNotMirror()) '
+    'b.addItem(R.id.nav_donate, R.drawable.about, R.string.lumidrive_paypal);',
+)
+replace_exact(
+    nav_path,
+    'v.setOnClickListener(t -> openUrl(t.getContext(), url));',
+    'v.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());',
+)
+nav_file = root / nav_path
+nav_text = nav_file.read_text(encoding="utf-8")
+anchor_start = '\t\tMainActivityDelegate a;\n\t\tif (BuildConfig.AUTO && (item.getItemId() == R.id.nav_donate)) {'
+anchor_end = '\n\t\treturn false;\n\t}\n\n\tprivate static void openUrl('
+start = nav_text.find(anchor_start)
+stop = nav_text.find(anchor_end, start)
+if start == -1 or stop == -1:
+    raise SystemExit("Upstream donation block changed; refusing an unsafe patch")
+new_donation = """\t\tif (BuildConfig.AUTO && (item.getItemId() == R.id.nav_donate)) {
+            MainActivityDelegate a = MainActivityDelegate.get(item.getContext());
+            a.createDialogBuilder()
+                    .setTitle(R.drawable.about, R.string.lumidrive_paypal)
+                    .setMessage(R.string.lumidrive_paypal_pending)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            return true;
+        }
+"""
+nav_text = nav_text[:start] + new_donation + nav_text[stop:]
+nav_file.write_text(nav_text, encoding="utf-8")
+
+# Do not offer generic old donate descriptions as if they were LumiDrive's.
+# Licensing and original author attribution remain available under About.
 
 changes.write_text(changes.read_text(encoding="utf-8") + """
 ## v0.5.0 home experience
@@ -441,4 +516,12 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - About screen is branded LumiDrive; original GPL attribution remains visible.
 - Version 0.5.0 / 272 for updating the installed 0.4.2 / 271.
 """, encoding="utf-8")
-print("LumiDrive v0.5.0 launcher home and branding applied successfully.")
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.5.1 top spacing / Home / PayPal
+- Respect the status bar inset on the phone dashboard.
+- Add a persistent center-bottom one-tap Home shortcut on phone pages.
+- Update About across locales: LumiDrive developer identity/version; legal attribution retained.
+- Remove original donation choices and links; show PayPal placeholder with no payment URL.
+- Version 0.5.1 / 273.
+""", encoding="utf-8")
+print("LumiDrive v0.5.1 phone UI, About, and PayPal support option applied.")
