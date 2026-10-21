@@ -378,3 +378,20 @@ replace_exact(
     'android:background="@drawable/lumidrive_home_background"',
 )
 print("LumiDrive v0.4 stage 1 phone background applied.")
+
+# v0.4 navigation prototype: show real module routes on long-press of toolbar.
+# The regular toolbar tap behavior remains unchanged.
+write_xml_path = root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveDashboard.java"
+write_xml_path.write_text("package me.aap.fermata.ui.activity;\n\nimport android.app.AlertDialog;\nimport android.content.Context;\nimport me.aap.fermata.BuildConfig;\nimport me.aap.fermata.R;\nimport me.aap.fermata.addon.AddonInfo;\nimport me.aap.fermata.addon.AddonManager;\nimport me.aap.fermata.addon.FermataAddon;\nimport me.aap.fermata.addon.FermataFragmentAddon;\n\n/**\n * Experimental LumiDrive navigation entry point. Reuses the original fragment\n * handlers; unavailable optional addons are never replaced by fake screens.\n */\npublic final class LumiDriveDashboard {\n    private LumiDriveDashboard() {}\n\n    public static void show(MainActivityDelegate activity) {\n        Context context = activity.getContext();\n        String[] entries = {\"IPTV\", \"YouTube\", \"Browser\", \"Library\", \"Favorites\", \"Settings\"};\n        new AlertDialog.Builder(context)\n                .setTitle(\"LumiDrive\")\n                .setItems(entries, (dialog, selected) -> {\n                    switch (selected) {\n                        case 0: openAddon(activity, \"iptv\"); break;\n                        case 1: openAddon(activity, \"youtube\"); break;\n                        case 2: openAddon(activity, \"browser\"); break;\n                        case 3: activity.showFragment(R.id.folders_fragment); break;\n                        case 4: activity.showFragment(R.id.favorites_fragment); break;\n                        case 5: activity.showFragment(R.id.settings_fragment); break;\n                        default: break;\n                    }\n                }).show();\n    }\n\n    private static void openAddon(MainActivityDelegate activity, String key) {\n        AddonManager manager = AddonManager.get();\n        for (AddonInfo info : BuildConfig.ADDONS) {\n            if (!info.className.toLowerCase(java.util.Locale.ROOT).contains(key)) continue;\n            FermataAddon addon = manager.getAddon(info.className);\n            if (addon instanceof FermataFragmentAddon) {\n                activity.showFragment(((FermataFragmentAddon) addon).getFragmentId());\n                return;\n            }\n        }\n        new AlertDialog.Builder(activity.getContext())\n                .setMessage(\"This module is not available in the current build.\")\n                .setPositiveButton(android.R.string.ok, null).show();\n    }\n}\n", encoding="utf-8")
+replace_exact(
+    "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityDelegate.java",
+    "toolBar = a.findViewById(R.id.tool_bar);",
+    "toolBar = a.findViewById(R.id.tool_bar);\\n"
+    "        if (!a.isCarActivity()) {\\n"
+    "            toolBar.setOnLongClickListener(v -> {\\n"
+    "                LumiDriveDashboard.show(this);\\n"
+    "                return true;\\n"
+    "            });\\n"
+    "        }".replace("\\\\n", "\\n"),
+)
+print("LumiDrive dashboard navigation prototype installed.")
