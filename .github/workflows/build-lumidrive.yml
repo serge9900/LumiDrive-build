@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - lumidrive-v0.4-ui
+      - lumidrive-v0.5-home
 
 permissions:
   contents: read
@@ -41,7 +42,7 @@ jobs:
           test -f upstream/LICENSE
           test -f upstream/fermata/build.gradle
 
-      - name: Apply LumiDrive theme and v0.4 dashboard
+      - name: Apply LumiDrive v0.5 home and branding
         run: |
           python3 -m py_compile apply_lumidrive.py
           python3 apply_lumidrive.py upstream
@@ -70,17 +71,17 @@ jobs:
             find upstream/fermata/build/outputs -type f -name '*.apk' -print || true
             exit 1
           fi
-          cp "${apks[0]}" dist/LumiDrive-v0.4-arm64.apk
-          unzip -tqq dist/LumiDrive-v0.4-arm64.apk
-          sha256sum dist/LumiDrive-v0.4-arm64.apk > dist/SHA256SUMS.txt
-          ls -lh dist/LumiDrive-v0.4-arm64.apk
+          cp "${apks[0]}" dist/LumiDrive-v0.5-arm64.apk
+          unzip -tqq dist/LumiDrive-v0.5-arm64.apk
+          sha256sum dist/LumiDrive-v0.5-arm64.apk > dist/SHA256SUMS.txt
+          ls -lh dist/LumiDrive-v0.5-arm64.apk
 
       - name: Upload test APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LumiDrive-v0.4-APK-arm64
+          name: LumiDrive-v0.5-APK-arm64
           path: |
-            dist/LumiDrive-v0.4-arm64.apk
+            dist/LumiDrive-v0.5-arm64.apk
             dist/SHA256SUMS.txt
           retention-days: 30
           if-no-files-found: error
