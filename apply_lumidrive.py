@@ -339,3 +339,12 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Package remains com.lumi.drive.auto; versionCode increased to 269.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
+
+
+# LumiDrive v0.4: prevent the separate LumiDrive package from offering
+# upstream Fermata APK updates, which would be misleading and incompatible.
+replace_exact(
+    "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java",
+    "public void checkUpdates() {\n\t\tif (!BuildConfig.AUTO) return;",
+    "public void checkUpdates() {\n\t\tif (getPackageName().startsWith(\"com.lumi.drive\")) return;\n\t\tif (!BuildConfig.AUTO) return;",
+)
