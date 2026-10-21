@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "276"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.4"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "277"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.5"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 276.
+- Package remains com.lumi.drive.auto; versionCode increased to 277.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -614,3 +614,47 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.5.4 / 276.
 """, encoding="utf-8")
 print("LumiDrive v0.5.4 Binance Pay support URL installed.")
+
+# LumiDrive 0.5.5: Keep Yandex Maps in our web browser instead of following
+# Yandex's native-app deep links. The browser must keep its normal HTTP(S)
+# loading and Youtube routing behavior unchanged.
+web_client = "modules/web/src/main/java/me/aap/fermata/addon/web/FermataWebClient.java"
+replace_exact(
+    web_client,
+    "\t\tif (isYoutubeUri(request.getUrl())) {",
+    "\t\t// Yandex Maps may redirect mobile WebViews to its native app using\n"
+    "\t\t// intent://maps.yandex.ru/... or yandexmaps://. Consume only those\n"
+    "\t\t// navigations so the current https:// maps page remains visible.\n"
+    "\t\tif (shouldStayOnYandexMapsWebsite(request.getUrl())) return true;\n"
+    "\t\tif (isYoutubeUri(request.getUrl())) {",
+)
+replace_exact(
+    web_client,
+    "\tpublic static boolean isYoutubeUri(Uri uri) {",
+    """\tprivate static boolean shouldStayOnYandexMapsWebsite(Uri uri) {
+        String scheme = uri.getScheme();
+        if ("yandexmaps".equalsIgnoreCase(scheme)) return true;
+        if (!"intent".equalsIgnoreCase(scheme)) return false;
+
+        String host = uri.getHost();
+        return ("maps.yandex.ru".equalsIgnoreCase(host) ||
+                "maps.yandex.com".equalsIgnoreCase(host));
+    }
+
+    public static boolean isYoutubeUri(Uri uri) {""",
+)
+web_source = (root / web_client).read_text(encoding="utf-8")
+if web_source.count("shouldStayOnYandexMapsWebsite(request.getUrl())") != 1:
+    raise SystemExit("Yandex Maps WebView override missing or duplicated")
+if "if (isYoutubeUri(request.getUrl())) {" not in web_source:
+    raise SystemExit("YouTube browser routing must remain intact")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.5.5 Yandex Maps website
+- WebView ignores native Yandex Maps deep links (intent://maps.yandex.ru
+  or yandexmaps://) rather than attempting to navigate to unsupported schemes.
+- The current https:// Yandex Maps page stays inside LumiDrive.
+- No external Yandex Maps app is launched, and no media or AA code is changed.
+- Version 0.5.5 / 277.
+""", encoding="utf-8")
+print("LumiDrive 0.5.5 targeted Yandex Maps WebView fix applied.")
