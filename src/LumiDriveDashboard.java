@@ -9,6 +9,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -25,6 +27,7 @@ import me.aap.fermata.addon.AddonManager;
  */
 public final class LumiDriveDashboard {
     private static final String HOME_TAG = "LumiDriveHome";
+    private static final String LAUNCHER_TAG = "LumiDriveHomeShortcut";
 
     private static final int BACKGROUND = 0xFF10091E;
     private static final int PANEL = 0xFF24173D;
@@ -36,12 +39,54 @@ public final class LumiDriveDashboard {
 
     private LumiDriveDashboard() {}
 
+    /** Persistent, one-tap Home button on the regular phone views. */
+    public static void ensureLauncherButton(MainActivityDelegate activity) {
+        if (activity.getAppActivity().isCarActivity()
+                || FermataApplication.get().isMirroringMode()) return;
+
+        Context ctx = activity.getContext();
+        ViewGroup host = activity.getAppActivity().findViewById(android.R.id.content);
+        if (host == null) return;
+        if (host.findViewWithTag(LAUNCHER_TAG) != null) return;
+
+        TextView button = new TextView(ctx);
+        button.setTag(LAUNCHER_TAG);
+        button.setText("☰");
+        button.setTextSize(27);
+        button.setTextColor(TEXT);
+        button.setTypeface(null, Typeface.BOLD);
+        button.setGravity(Gravity.CENTER);
+        button.setContentDescription("Главное меню LumiDrive");
+        button.setFocusable(true);
+        button.setElevation(dp(ctx, 12));
+        button.setBackground(gradient(0xFF8050CC, 0xFFCC4B9C, dp(ctx, 29), CYAN));
+        button.setOnClickListener(v -> show(activity));
+
+        FrameLayout.LayoutParams position =
+                new FrameLayout.LayoutParams(dp(ctx, 58), dp(ctx, 58));
+        position.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        // Above the bottom navigation; don't obscure media transport buttons.
+        position.bottomMargin = dp(ctx, 100);
+        host.addView(button, position);
+        setLauncherButtonVisible(host, host.findViewWithTag(HOME_TAG) == null);
+    }
+
+    private static void setLauncherButtonVisible(ViewGroup host, boolean visible) {
+        View launcher = host.findViewWithTag(LAUNCHER_TAG);
+        if (launcher != null) launcher.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    private static void dismissHome(ViewGroup host, View home) {
+        if (home.getParent() == host) host.removeView(home);
+        setLauncherButtonVisible(host, true);
+    }
+
     public static boolean hide(MainActivity activity) {
         ViewGroup host = activity.findViewById(android.R.id.content);
         if (host == null) return false;
         View home = host.findViewWithTag(HOME_TAG);
         if (home == null) return false;
-        host.removeView(home);
+        dismissHome(host, home);
         return true;
     }
 
@@ -65,7 +110,14 @@ public final class LumiDriveDashboard {
         LinearLayout content = new LinearLayout(ctx);
         content.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(ctx, 20);
-        content.setPadding(pad, dp(ctx, 27), pad, dp(ctx, 28));
+        // Draw below the status bar/camera cutout on edge-to-edge Android.
+        content.setPadding(pad, dp(ctx, 52), pad, dp(ctx, 28));
+        ViewCompat.setOnApplyWindowInsetsListener(home, (v, insets) -> {
+            int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            content.setPadding(pad, Math.max(dp(ctx, 52), top + dp(ctx, 20)),
+                    pad, dp(ctx, 28));
+            return insets;
+        });
 
         // Branded header and a functional Settings shortcut.
         LinearLayout header = new LinearLayout(ctx);
@@ -127,7 +179,7 @@ public final class LumiDriveDashboard {
             resume.setContentDescription("Продолжить просмотр");
             resume.setFocusable(true);
             resume.setOnClickListener(v -> {
-                host.removeView(home);
+                dismissHome(host, home);
                 host.post(() -> activity.goToCurrent());
             });
             content.addView(resume);
@@ -167,7 +219,7 @@ public final class LumiDriveDashboard {
                 card.setFocusable(true);
                 final int destination = index;
                 card.setOnClickListener(v -> {
-                    host.removeView(home);
+                    dismissHome(host, home);
                     host.post(() -> openDestination(activity, destination));
                 });
                 LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(
@@ -199,8 +251,10 @@ public final class LumiDriveDashboard {
         scroll.addView(content);
         home.addView(scroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setLauncherButtonVisible(host, false);
         host.addView(home, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        ViewCompat.requestApplyInsets(home);
         home.requestFocus();
     }
 
@@ -220,7 +274,7 @@ public final class LumiDriveDashboard {
 
     private static void open(MainActivityDelegate activity, ViewGroup host, View home,
                              int fragmentId) {
-        host.removeView(home);
+        dismissHome(host, home);
         host.post(() -> activity.showFragment(fragmentId));
     }
 
