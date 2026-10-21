@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "274"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.2"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "275"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.3"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 274.
+- Package remains com.lumi.drive.auto; versionCode increased to 275.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -385,11 +385,9 @@ if not dashboard.is_file():
     raise SystemExit(f"Missing LumiDrive dashboard source: {dashboard}")
 (root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveDashboard.java").write_text(
     dashboard.read_text(encoding="utf-8"), encoding="utf-8")
-replace_exact(
-    "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityDelegate.java",
-    "toolBar = a.findViewById(R.id.tool_bar);",
-    "toolBar = a.findViewById(R.id.tool_bar);\n        if (!a.isCarActivity()) {\n            toolBar.setOnLongClickListener(v -> {\n                LumiDriveDashboard.show(this);\n                return true;\n            });\n        }",
-)
+# Do NOT intercept ToolBarView touch/long-click events. This view contains
+# Save (tick), Cancel (X) and Back actions, which must retain upstream handlers.
+# The LumiDrive home remains available via the bottom nav overflow "Главная".
 # LumiDrive 0.5: open new home when launched normally on the phone.
 # Leave Android Auto, mirroring and deep-link intent flows untouched.
 replace_exact(
@@ -595,3 +593,18 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 """, encoding="utf-8")
 print("LumiDrive v0.5.2 non-obstructive Home navigation applied.")
 
+
+# v0.5.3 regression guard: toolbar's original controls must remain untouched.
+activity_java = (root / "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityDelegate.java").read_text(encoding="utf-8")
+if "toolBar.setOnLongClickListener(v -> {" in activity_java:
+    raise SystemExit("Regression: dashboard must never intercept toolbar touch events")
+if activity_java.count("LumiDriveDashboard.show(this)") != 1:
+    raise SystemExit("Expected exactly one phone-home launch call in defaultIntent")
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.5.3 toolbar regression fix
+- Remove the outdated toolbar long-press handler.
+- Preserve original Back, Save and Cancel toolbar behavior, including IPTV source forms.
+- Keep one-tap "Главная" in the bottom navigation overflow popover.
+- Version 0.5.3 / 275.
+""", encoding="utf-8")
+print("LumiDrive 0.5.3 toolbar input handler fix applied.")
