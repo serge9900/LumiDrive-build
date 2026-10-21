@@ -348,3 +348,33 @@ replace_exact(
     "public void checkUpdates() {\n\t\tif (!BuildConfig.AUTO) return;",
     "public void checkUpdates() {\n\t\tif (getPackageName().startsWith(\"com.lumi.drive\")) return;\n\t\tif (!BuildConfig.AUTO) return;",
 )
+
+
+# LumiDrive v0.4, stage 1: apply a distinct layered phone background.
+# This is a real runtime resource change, not a mockup. Keep all view IDs and
+# navigation handlers unchanged while the card launcher is developed.
+write_xml("fermata/src/main/res/drawable/lumidrive_home_background.xml", """<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient android:angle="270"
+        android:startColor="#10091E"
+        android:centerColor="#1C1030"
+        android:endColor="#10091E" />
+</shape>
+""")
+replace_exact(
+    "fermata/src/main/res/layout/main_activity.xml",
+    'android:id="@+id/main_activity"\n    android:layout_width',
+    'android:id="@+id/main_activity"\n    android:layout_width',
+)
+replace_exact(
+    "fermata/src/main/res/layout/main_activity.xml",
+    'android:background="?android:colorPrimary"',
+    'android:background="@drawable/lumidrive_home_background"',
+)
+replace_exact(
+    "fermata/src/main/res/layout/main_activity.xml",
+    'android:background="?android:colorBackground"',
+    'android:background="@drawable/lumidrive_home_background"',
+)
+print("LumiDrive v0.4 stage 1 phone background applied.")
