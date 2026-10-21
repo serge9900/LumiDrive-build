@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "275"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.3"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "276"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.4"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 275.
+- Package remains com.lumi.drive.auto; versionCode increased to 276.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -418,7 +418,7 @@ about_en = """<H1 align="center">LumiDrive</H1>
         <p>LumiDrive brings IPTV, YouTube, web browsing and local media together.</p>
         <p><b>Developer:</b> Serge Vardanyan</p>
         <p><b>Version:</b> %1$s (%2$d)</p>
-        <p><b>Support:</b> PayPal (link coming soon)</p>
+        <p><b>Support:</b> <a href="https://app.binance.com/uni-qr/Jv3MYVZ8">Donate via Binance Pay</a> (User-92ef9)</p>
         <hr/>
         <p><small>Open-source notices: Based on Fermata Media Player
         by Andrey Pavlenko and contributors (GNU GPL-3.0).
@@ -427,7 +427,7 @@ about_ru = """<H1 align="center">LumiDrive</H1>
         <p>LumiDrive — медиаплеер с IPTV, YouTube, браузером и медиатекой.</p>
         <p><b>Разработчик:</b> Serge Vardanyan</p>
         <p><b>Версия:</b> %1$s (%2$d)</p>
-        <p><b>Поддержка:</b> PayPal (ссылка будет добавлена позже)</p>
+        <p><b>Поддержать:</b> <a href="https://app.binance.com/uni-qr/Jv3MYVZ8">Binance Pay</a> (User-92ef9)</p>
         <hr/>
         <p><small>Лицензии: основан на Fermata Media Player,
         автор Андрей Павленко и участники проекта (GNU GPL-3.0).
@@ -450,18 +450,18 @@ for path in sorted((root / "fermata/src/main/res").glob("values*/strings.xml")):
 if about_count < 2:
     raise SystemExit("About translations not found")
 
-# PayPal is the ONLY support option, intentionally inactive until the user
-# provides their actual link. Never direct to the upstream developer's wallet.
-for locale, pending in (
-    ("values", "Add your PayPal link in a future LumiDrive update."),
-    ("values-ru", "Ссылка на PayPal будет добавлена позже."),
+# This is the user's own Binance Pay receive link, decoded from the QR
+# image they supplied. It is launched externally; the payer chooses an amount
+# and explicitly confirms the transfer inside Binance.
+for locale, label in (
+    ("values", "Donate"),
+    ("values-ru", "Поддержать"),
 ):
     path = root / "fermata/src/main/res" / locale / "strings.xml"
     raw = path.read_text(encoding="utf-8")
-    if 'name="lumidrive_paypal"' in raw:
-        raise SystemExit(f"Duplicate PayPal resource in {path}")
-    addition = ('    <string name="lumidrive_paypal">PayPal</string>\n'
-                '    <string name="lumidrive_paypal_pending">' + pending + '</string>\n')
+    if 'name="lumidrive_donate"' in raw:
+        raise SystemExit(f"Duplicate Donate resource in {path}")
+    addition = '    <string name="lumidrive_donate">' + label + '</string>\n'
     if raw.count("</resources>") != 1:
         raise SystemExit(f"Unexpected resource XML in {path}")
     path.write_text(raw.replace("</resources>", addition + "</resources>"),
@@ -472,7 +472,7 @@ replace_exact(
     nav_path,
     'if (BuildConfig.AUTO) b.addItem(R.id.nav_donate, R.drawable.coffee, R.string.donate);',
     'if (BuildConfig.AUTO && !a.isCarActivityNotMirror()) '
-    'b.addItem(R.id.nav_donate, R.drawable.about, R.string.lumidrive_paypal);',
+    'b.addItem(R.id.nav_donate, R.drawable.coffee, R.string.lumidrive_donate);',
 )
 replace_exact(
     nav_path,
@@ -488,12 +488,7 @@ stop = nav_text.find(anchor_end, start)
 if start == -1 or stop == -1:
     raise SystemExit("Upstream donation block changed; refusing an unsafe patch")
 new_donation = """\t\tif (BuildConfig.AUTO && (item.getItemId() == R.id.nav_donate)) {
-            MainActivityDelegate a = MainActivityDelegate.get(item.getContext());
-            a.createDialogBuilder()
-                    .setTitle(R.drawable.about, R.string.lumidrive_paypal)
-                    .setMessage(R.string.lumidrive_paypal_pending)
-                    .setPositiveButton(android.R.string.ok, null)
-                    .show();
+            openUrl(item.getContext(), "https://app.binance.com/uni-qr/Jv3MYVZ8");
             return true;
         }
 """
@@ -608,3 +603,14 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.5.3 / 275.
 """, encoding="utf-8")
 print("LumiDrive 0.5.3 toolbar input handler fix applied.")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.5.4 direct Binance Pay support
+- Remove the inactive PayPal donation placeholder.
+- "Поддержать"/"Donate" opens the owner's Binance Pay receive URL on first tap.
+- The owner supplied a Binance Pay QR that encodes: https://app.binance.com/uni-qr/Jv3MYVZ8
+- Support link is also visible and clickable in the About page.
+- Do not initiate payments in-app; payer must review and confirm in Binance.
+- Version 0.5.4 / 276.
+""", encoding="utf-8")
+print("LumiDrive v0.5.4 Binance Pay support URL installed.")
