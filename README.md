@@ -1,42 +1,162 @@
-# LumiDrive — Android multimedia project
+<div align="center">
 
-**LumiDrive v0.3 (experimental)** is an Android multimedia app based on the open-source
-[Fermata Media Player](https://github.com/AndreyPavlenko/Fermata) by Andrey Pavlenko and contributors.
+<img src="docs/lumidrive-cover.svg" width="100%" alt="LumiDrive — dark purple Android media dashboard illustration" />
 
-## LumiDrive design — v0.3
+### ✦ Your media. One beautiful dashboard.
+### Твои медиа. Один красивый главный экран.
 
-- Dark purple background and panels
-- Rounded playback, toolbar and navigation buttons
-- Pink, violet and cyan accent colors
-- New main launcher and Android Auto media icons (including Android 16 adaptive icon)
-- Existing IPTV, Browser and YouTube code retained
-- Application ID: `com.lumi.drive.auto`
-- Version code: `269` (install update over v0.2)
-- Android Auto functionality **not yet verified** for LumiDrive; original Fermata can remain installed
+**A modern, experimental Android multimedia experience.**  
+**Современный экспериментальный медиаплеер для Android.**
 
-## Build APK without Android Studio
+![Version](https://img.shields.io/badge/preview-v0.5.4-bd87ff?style=flat-square)
+![Android](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white&style=flat-square)
+![Architecture](https://img.shields.io/badge/APK-arm64--v8a-90dfff?style=flat-square)
+![Language](https://img.shields.io/badge/UI-Русский%20%7C%20English-ff7ac8?style=flat-square)
+![License](https://img.shields.io/badge/license-GPL--3.0-a987ed?style=flat-square)
 
-1. Go to **Actions → Build LumiDrive APK → Run workflow** on the `main` branch.
-2. Wait for the workflow to complete successfully.
-3. Open the completed run's **Summary** and download artifact `LumiDrive-v0.3-APK-arm64`.
-4. Extract `LumiDrive-v0.3-arm64.apk` and install on an arm64 Android phone.
-5. Test on phone first, then on a parked vehicle with a passenger-operated interface.
+[![Android build](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml/badge.svg?branch=lumidrive-v0.5.4-binance-support)](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)
 
-This build runs a **pinned Fermata 2.0.2** checkout and applies
-[`apply_lumidrive.py`](./apply_lumidrive.py) to the checked-out sources.
-The repository contains the build script and all project-specific modifications, not a
-pre-verified APK.
+[🇬🇧 English](#-english) · [🇷🇺 Русский](#-русский) · [Latest development branch](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.5.4-binance-support) · [Builds / APK](https://github.com/serge9900/LumiDrive-build/actions) · [Developer](https://github.com/serge9900)
 
-**Troubleshooting**: If the build fails, open the red job and share the failing Gradle step.
-If an update fails due to signing, do not uninstall your working Fermata. Our app has a
-different package ID. Check the package/signature of the LumiDrive test app first.
+</div>
 
-## Open-source license and attribution
+---
 
-GPL-3.0, consistent with Fermata. Preserve the original copyright notices and provide
-complete corresponding source code and modifications with public binary distributions.
-Third-party components (including the Android Auto AAR) still require license review
-before publishing LumiDrive as a public release.
+## 🇬🇧 English
 
-**Important**: A successful build or install does not guarantee compatibility with
-a specific Android Auto host, and does not remove platform restrictions.
+**LumiDrive** is an independent Android multimedia project by **Sergey Vardanyan**, built on the open-source [Fermata Media Player](https://github.com/AndreyPavlenko/Fermata) project. It brings media features together behind a fresh, dark-purple phone interface with rounded cards and cyan, pink and violet accents.
+
+The project is **experimental**. It is not an official Fermata or Binance product.
+
+### ✨ What you can do
+
+- 📺 **IPTV:** Open live TV and M3U playlists, with existing TV source and EPG options.
+- ▶️ **YouTube:** Access the existing YouTube module from the home screen.
+- 🌐 **Web browser:** Open web pages without leaving the media experience.
+- 📁 **Media library:** Browse local folders, media files and playlists.
+- 💜 **Favorites:** Quickly revisit saved items.
+- ⏯️ **Continue watching:** Return to the current or previously played media when available.
+- 🏠 **LumiDrive Home:** A custom card dashboard, accessible again through **Home** in the bottom navigation's overflow menu.
+- 🚘 **Android Auto variant:** Built using the upstream Auto modules; compatibility depends on the phone, Android Auto version and car head unit.
+
+### 🎨 Design
+
+The LumiDrive phone interface uses a deep-purple background, rounded tiles, modern icons and bright accent colors. Main dashboard labels are in Russian, with English fallback resources. Playback and settings retain parts of the upstream interface while the redesign continues.
+
+### 🚀 Get the latest preview APK
+
+> **Latest development preview: `v0.5.4 (276)`.** Source changes live on [`lumidrive-v0.5.4-binance-support`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.5.4-binance-support). The default `main` branch still contains the older **v0.3 build tools**. This is **not** a verified public release.
+
+1. Open **[GitHub Actions → Build LumiDrive APK](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)**.
+2. Open a successful run for the `lumidrive-v0.5.4-binance-support` branch, or choose **Run workflow** and select that branch.
+3. In the run summary, find **Artifacts** and download `LumiDrive-v0.5.4-APK-arm64`.
+4. Extract the ZIP and install `LumiDrive-v0.5.4-arm64.apk` on a compatible Android phone.
+5. Test IPTV, YouTube, browser and navigation on the phone first. Test Android Auto only while safely parked.
+
+**Updates:** An APK can update your existing LumiDrive installation only if the package ID and signing certificate are compatible. Back up data before experimenting; don't uninstall a working build merely to try a preview.
+
+**No Android Studio needed** to download an existing CI build. GitHub Actions artifacts are temporary and require GitHub access.
+
+### 🛠️ Build from source
+
+The build workflow checks out **Fermata 2.0.2**, its submodules and this repository's LumiDrive modifications, then compiles an Android APK using Gradle and Java 17.
+
+- **[`apply_lumidrive.py` — branding and code patches](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/apply_lumidrive.py)**
+- **[`src/LumiDriveDashboard.java` — LumiDrive phone dashboard](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/src/LumiDriveDashboard.java)**
+- **[`build-lumidrive.yml` — automated APK build](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/.github/workflows/build-lumidrive.yml)**
+
+This repository contains **LumiDrive's patch/build sources**, not a complete standalone copy of Fermata or a permanently hosted APK. The pinned upstream source is downloaded as part of the build.
+
+### ⚠️ Current limitations
+
+- Android Auto behavior is **not guaranteed** on every phone or vehicle.
+- Android Auto safety and driver-distraction restrictions still apply; don't use video while driving.
+- This is an evolving project. Individual modules and device combinations may need further testing.
+- The upstream base and third-party dependencies must be reviewed for license compliance before distributing binaries more broadly.
+
+---
+
+## 🇷🇺 Русский
+
+**LumiDrive** — независимый мультимедийный проект для Android от **Сергея Варданяна**, основанный на открытом проекте [Fermata Media Player](https://github.com/AndreyPavlenko/Fermata). Яркий современный интерфейс объединяет основные функции плеера в одном красивом главном экране.
+
+Проект пока находится **в стадии разработки и тестирования**.
+
+### ✨ Возможности
+
+- 📺 **IPTV:** телеканалы, M3U-плейлисты, настройки источников и EPG.
+- ▶️ **YouTube:** переход в существующий модуль YouTube.
+- 🌐 **Браузер:** просмотр сайтов прямо из приложения.
+- 📁 **Медиатека:** локальные файлы, папки и плейлисты.
+- 💜 **Избранное:** быстрый доступ к сохранённому.
+- ⏯️ **Продолжить просмотр:** возвращение к текущему или последнему медиа, если оно доступно.
+- 🏠 **Главная:** фирменные карточки LumiDrive и возврат через пункт **«Главная»** в раскрывающемся меню нижней панели.
+- 🚘 **Android Auto:** отдельная сборка с автомобильными модулями исходного проекта; совместимость зависит от устройства и автомобиля.
+
+### 🎨 Интерфейс
+
+Тёмно-фиолетовый фон, мягкие градиенты, округлые карточки, голубые, розовые и сиреневые акценты. Главный экран уже оформлен в стиле LumiDrive. Остальные экраны постепенно обновляются с сохранением функций плеера.
+
+### 📦 Как скачать и установить
+
+1. Перейди в **[GitHub Actions → Build LumiDrive APK](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)**.
+2. Выбери успешную сборку ветки `lumidrive-v0.5.4-binance-support`. Если сборки нет, нажми **Run workflow** и выбери эту ветку.
+3. Внизу страницы, в разделе **Artifacts**, скачай архив `LumiDrive-v0.5.4-APK-arm64`.
+4. Распакуй ZIP и установи `LumiDrive-v0.5.4-arm64.apk` на Android-телефон с подходящей архитектурой.
+5. Сначала проверь функции на телефоне, затем — Android Auto в припаркованном автомобиле.
+
+**Важно:** текущая экспериментальная версия — **0.5.4 (276)**, исходный код — в отдельной ветке разработки. Ветка `main` пока содержит сборочные инструменты старой v0.3.
+
+Если Android не позволяет установить APK поверх прежней версии, проверь подпись приложения и идентификатор пакета. Перед любыми переустановками сохрани важные настройки и плейлисты.
+
+### 🔧 Исходники и разработка
+
+Для сборки используются исходники **Fermata 2.0.2** и собственные изменения LumiDrive. Всё выполняется через GitHub Actions, поэтому для скачивания APK Android Studio не требуется.
+
+Полезные файлы: [скрипт изменений](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/apply_lumidrive.py), [главный экран](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/src/LumiDriveDashboard.java), [сборка GitHub Actions](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/.github/workflows/build-lumidrive.yml).
+
+### ⚠️ Что важно знать
+
+LumiDrive пока не является стабильным релизом. Не все модели телефонов и автомобильных экранов проверены. Приложение не отменяет ограничения безопасности Android Auto. Пользоваться видео за рулём нельзя.
+
+---
+
+## ⚖️ Open source & credits · Исходный код и авторство
+
+**LumiDrive UI and modifications / Интерфейс и изменения LumiDrive:** [Sergey Vardanyan](https://github.com/serge9900).
+
+**Upstream / Основа:** [Fermata Media Player](https://github.com/AndreyPavlenko/Fermata) — **Andrey Pavlenko and contributors / Андрей Павленко и участники проекта**.
+
+**License / Лицензия:** **GNU GPL-3.0**. Original copyright notices and applicable license obligations must be retained. Distributions of binaries must provide the corresponding complete source and necessary modifications. Third-party binary dependencies may have additional obligations.
+
+LumiDrive is an independent derivative project; it is **not officially affiliated** with Fermata, Google, Android Auto or Binance.
+
+---
+
+<div align="center">
+
+## 💛 Support LumiDrive · Поддержать LumiDrive
+
+**Enjoy LumiDrive? You can support its development with a voluntary donation.**  
+**Нравится LumiDrive? Можешь поддержать дальнейшую разработку добровольным донатом.** 💜
+
+<a href="https://app.binance.com/uni-qr/Jv3MYVZ8">
+  <img src="docs/binance-pay-qr.svg" width="190" alt="Scan QR to donate to LumiDrive with Binance Pay" />
+</a>
+
+### [💛 Donate via Binance Pay · Поддержать через Binance Pay](https://app.binance.com/uni-qr/Jv3MYVZ8)
+
+**Recipient / Получатель:** `User-92ef9`
+
+<sub>Open the link in Binance or scan the QR code using the Binance app.<br/>
+Открой ссылку в Binance или отсканируй QR-код через приложение Binance.</sub>
+
+<sub>Donations are optional. Verify the recipient and payment details in Binance before confirming.<br/>
+Поддержка добровольная. Перед отправкой проверь получателя и данные перевода в Binance.</sub>
+
+---
+
+**Made with 💜 by [Sergey Vardanyan](https://github.com/serge9900)**  
+*LumiDrive · Experimental Android multimedia project · Preview v0.5.4*
+
+</div>
