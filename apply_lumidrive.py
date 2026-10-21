@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "271"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.4.2"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "272"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.0"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 271.
+- Package remains com.lumi.drive.auto; versionCode increased to 272.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -379,11 +379,66 @@ replace_exact(
 )
 print("LumiDrive v0.4 stage 1 phone background applied.")
 
-# v0.4.2: in-activity full-screen dashboard with one-tap navigation.
-(root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveDashboard.java").write_text("package me.aap.fermata.ui.activity;\n\nimport android.app.AlertDialog;\nimport android.content.Context;\nimport android.graphics.Color;\nimport android.graphics.Typeface;\nimport android.graphics.drawable.GradientDrawable;\nimport android.view.Gravity;\nimport android.view.KeyEvent;\nimport android.view.View;\nimport android.view.ViewGroup;\nimport android.widget.FrameLayout;\nimport android.widget.LinearLayout;\nimport android.widget.ScrollView;\nimport android.widget.TextView;\nimport me.aap.fermata.R;\nimport me.aap.fermata.addon.AddonManager;\n\n/**\n * LumiDrive phone dashboard.\n *\n * Unlike an AlertDialog, this view lives inside the app content window.\n * Removing it before navigation prevents the old two-tap/modal-overlay bug.\n */\npublic final class LumiDriveDashboard {\n    private static final String OVERLAY_TAG = \"LumiDriveDashboardOverlay\";\n\n    private LumiDriveDashboard() {}\n\n    public static void show(MainActivityDelegate activity) {\n        Context ctx = activity.getContext();\n        ViewGroup host = activity.getAppActivity().findViewById(android.R.id.content);\n        if (host == null || host.findViewWithTag(OVERLAY_TAG) != null) return;\n\n        FrameLayout overlay = new FrameLayout(ctx);\n        overlay.setTag(OVERLAY_TAG);\n        overlay.setBackgroundColor(0xFF10091E);\n        overlay.setClickable(true);\n        overlay.setFocusableInTouchMode(true);\n\n        ScrollView scroll = new ScrollView(ctx);\n        scroll.setFillViewport(true);\n        LinearLayout content = new LinearLayout(ctx);\n        content.setOrientation(LinearLayout.VERTICAL);\n        int pad = dp(ctx, 18);\n        content.setPadding(pad, pad, pad, pad);\n        content.setBackgroundColor(0xFF10091E);\n\n        LinearLayout header = new LinearLayout(ctx);\n        header.setGravity(Gravity.CENTER_VERTICAL);\n        TextView title = new TextView(ctx);\n        title.setText(\"LumiDrive\");\n        title.setTextColor(Color.WHITE);\n        title.setTextSize(27);\n        title.setTypeface(null, Typeface.BOLD);\n        header.addView(title, new LinearLayout.LayoutParams(0, dp(ctx, 58), 1f));\n\n        TextView close = new TextView(ctx);\n        close.setText(\"✕\");\n        close.setGravity(Gravity.CENTER);\n        close.setTextSize(26);\n        close.setTextColor(0xFF8FE7FF);\n        close.setContentDescription(\"Close LumiDrive dashboard\");\n        close.setFocusable(true);\n        close.setOnClickListener(v -> host.removeView(overlay));\n        header.addView(close, new LinearLayout.LayoutParams(dp(ctx, 48), dp(ctx, 48)));\n        content.addView(header);\n\n        TextView subtitle = new TextView(ctx);\n        subtitle.setText(\"Your media, your drive\");\n        subtitle.setTextColor(0xFFBFA6E1);\n        subtitle.setPadding(0, 0, 0, dp(ctx, 22));\n        content.addView(subtitle);\n\n        String[] labels = {\"IPTV\", \"YouTube\", \"Browser\", \"Library\", \"Favorites\", \"Settings\"};\n        String[] descriptions = {\"Live TV and playlists\", \"Videos\", \"Browse the web\",\n                \"Local media\", \"Saved items\", \"Preferences\"};\n        int[] accents = {0xFFFF7AC8, 0xFFAE8AFF, 0xFF8FE7FF, 0xFFAE8AFF, 0xFFFF7AC8, 0xFF8FE7FF};\n        for (int row = 0; row < 3; row++) {\n            LinearLayout line = new LinearLayout(ctx);\n            line.setOrientation(LinearLayout.HORIZONTAL);\n            for (int col = 0; col < 2; col++) {\n                final int index = row * 2 + col;\n                LinearLayout card = new LinearLayout(ctx);\n                card.setOrientation(LinearLayout.VERTICAL);\n                card.setGravity(Gravity.CENTER_VERTICAL);\n                card.setPadding(dp(ctx, 14), dp(ctx, 18), dp(ctx, 10), dp(ctx, 18));\n                GradientDrawable bg = new GradientDrawable();\n                bg.setColor(0xFF24173D);\n                bg.setCornerRadius(dp(ctx, 18));\n                bg.setStroke(dp(ctx, 1), 0xFF47305E);\n                card.setBackground(bg);\n\n                TextView heading = new TextView(ctx);\n                heading.setText(labels[index]);\n                heading.setTextSize(18);\n                heading.setTypeface(null, Typeface.BOLD);\n                heading.setTextColor(accents[index]);\n                card.addView(heading);\n\n                TextView detail = new TextView(ctx);\n                detail.setText(descriptions[index]);\n                detail.setTextColor(0xFFEFE9FA);\n                detail.setTextSize(12);\n                card.addView(detail);\n\n                card.setContentDescription(labels[index]);\n                card.setFocusable(true);\n                card.setOnClickListener(v -> {\n                    // Remove synchronously while the host is still attached.\n                    // Schedule navigation on the persistent host, not the removed card.\n                    host.removeView(overlay);\n                    host.post(() -> openDestination(activity, index));\n                });\n\n                LinearLayout.LayoutParams params =\n                        new LinearLayout.LayoutParams(0, dp(ctx, 110), 1f);\n                params.setMargins(dp(ctx, 4), dp(ctx, 4), dp(ctx, 4), dp(ctx, 4));\n                line.addView(card, params);\n            }\n            content.addView(line);\n        }\n\n        if (activity.hasCurrent()) {\n            TextView resume = new TextView(ctx);\n            resume.setText(\"▶ Continue watching\");\n            resume.setTextColor(0xFF8FE7FF);\n            resume.setGravity(Gravity.CENTER);\n            resume.setTextSize(16);\n            resume.setPadding(pad, dp(ctx, 16), pad, dp(ctx, 16));\n            resume.setOnClickListener(v -> {\n                host.removeView(overlay);\n                host.post(() -> activity.goToCurrent());\n            });\n            content.addView(resume);\n        }\n\n        scroll.addView(content);\n        overlay.addView(scroll, new FrameLayout.LayoutParams(\n                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n\n        overlay.setOnKeyListener((v, keyCode, event) -> {\n            if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {\n                host.removeView(overlay);\n                return true;\n            }\n            return false;\n        });\n\n        host.addView(overlay, new ViewGroup.LayoutParams(\n                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        overlay.requestFocus();\n    }\n\n    private static void openDestination(MainActivityDelegate activity, int index) {\n        switch (index) {\n            case 0: openAddon(activity, R.id.tv_fragment); break;\n            case 1: openAddon(activity, R.id.youtube_fragment); break;\n            case 2: openAddon(activity, R.id.web_browser_fragment); break;\n            case 3: activity.showFragment(R.id.folders_fragment); break;\n            case 4: activity.showFragment(R.id.favorites_fragment); break;\n            case 5: activity.showFragment(R.id.settings_fragment); break;\n            default: break;\n        }\n    }\n\n    private static int dp(Context ctx, float value) {\n        return (int) (value * ctx.getResources().getDisplayMetrics().density + 0.5f);\n    }\n\n    private static void openAddon(MainActivityDelegate activity, int fragmentId) {\n        if (AddonManager.get().hasAddon(fragmentId)) {\n            activity.showFragment(fragmentId);\n            return;\n        }\n        new AlertDialog.Builder(activity.getContext())\n                .setMessage(\"This module is not available in the current build.\")\n                .setPositiveButton(android.R.string.ok, null).show();\n    }\n}\n", encoding="utf-8")
+# LumiDrive 0.5: copy the separately maintained, real home UI Java source.
+dashboard = Path(__file__).resolve().parent / "src" / "LumiDriveDashboard.java"
+if not dashboard.is_file():
+    raise SystemExit(f"Missing LumiDrive dashboard source: {dashboard}")
+(root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveDashboard.java").write_text(
+    dashboard.read_text(encoding="utf-8"), encoding="utf-8")
 replace_exact(
     "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityDelegate.java",
     "toolBar = a.findViewById(R.id.tool_bar);",
     "toolBar = a.findViewById(R.id.tool_bar);\n        if (!a.isCarActivity()) {\n            toolBar.setOnLongClickListener(v -> {\n                LumiDriveDashboard.show(this);\n                return true;\n            });\n        }",
 )
-print("LumiDrive v0.4.2 in-activity one-tap dashboard installed.")
+# LumiDrive 0.5: open new home when launched normally on the phone.
+# Leave Android Auto, mirroring and deep-link intent flows untouched.
+replace_exact(
+    "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityDelegate.java",
+    "private void defaultIntent() {",
+    "private void defaultIntent() {\n"
+    "\t\tif (!getAppActivity().isCarActivity() && !FermataApplication.get().isMirroringMode()) {\n"
+    "\t\t\tif (getActiveFragment() == null) showFragment(R.id.folders_fragment);\n"
+    "\t\t\tpost(() -> LumiDriveDashboard.show(this));\n"
+    "\t\t\tcheckUpdates();\n"
+    "\t\t\treturn;\n"
+    "\t\t}\n",
+)
+
+# Back button closes LumiDrive first rather than exiting the underlying player.
+replace_exact(
+    "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java",
+    "public void handleOnBackPressed() {\n"
+    "\t\t\t\tgetActivityDelegate().onSuccess(MainActivityDelegate::onBackPressed);",
+    "public void handleOnBackPressed() {\n"
+    "\t\t\t\tif (LumiDriveDashboard.hide(MainActivity.this)) return;\n"
+    "\t\t\t\tgetActivityDelegate().onSuccess(MainActivityDelegate::onBackPressed);",
+)
+
+# User-facing About branding, with legally necessary upstream attribution retained.
+replace_exact(
+    "fermata/src/main/res/values/strings.xml",
+    '<H1 align="center">Fermata Media Player</H1>\n'
+    '        <p>Fermata Media Player is a free, open source audio and video player with a simple and\n'
+    '        intuitive interface.</p>\n'
+    '        <p><b>Author:</b> Andrey Pavlenko</p>\n'
+    '        <p><b>Version:</b> %1$s (%2$d)</p>\n'
+    '        <p><b>Home page:</b> <a href="%3$s">%3$s</a></p>',
+    '<H1 align="center">LumiDrive</H1>\n'
+    '        <p>Медиаплеер с IPTV, YouTube и браузером.</p>\n'
+    '        <p><b>Версия:</b> %1$s (%2$d)</p>\n'
+    '        <p><b>Основан на:</b> Fermata Media Player by Andrey Pavlenko (GPL-3.0).</p>\n'
+    '        <p><b>Исходный проект:</b> <a href="%3$s">%3$s</a></p>',
+)
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.5.0 home experience
+- Phone now opens the full-screen LumiDrive dashboard on normal launcher starts.
+- Russian navigation labels, integrated module icons and a continue-watching shortcut.
+- Original IPTV, YouTube, browser, library, favorites, settings and playback remain routed
+  through their existing fragments; return to home via toolbar long press.
+- Android Auto and screen mirroring skip the new home screen.
+- Phone Back hides the new home without closing the player.
+- About screen is branded LumiDrive; original GPL attribution remains visible.
+- Version 0.5.0 / 272 for updating the installed 0.4.2 / 271.
+""", encoding="utf-8")
+print("LumiDrive v0.5.0 launcher home and branding applied successfully.")
