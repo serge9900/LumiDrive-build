@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "279"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.7"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "280"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.6.0"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 279.
+- Package remains com.lumi.drive.auto; versionCode increased to 280.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -911,3 +911,180 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.5.7 / 279.
 """, encoding="utf-8")
 print("LumiDrive 0.5.7 branded regular and fullscreen mirror icons applied.")
+
+
+# LumiDrive Auto UI 1.0 (v0.6.0) — real Android Auto home screen.
+# Reuse the existing car activity and media/player fragments; this is a
+# removable overlay over the car's ConstraintLayout, not a new media engine.
+auto_dashboard = Path(__file__).resolve().parent / "src" / "LumiDriveAutoHome.java"
+if not auto_dashboard.is_file():
+    raise SystemExit(f"Missing LumiDrive Auto Home source: {auto_dashboard}")
+auto_dashboard_text = auto_dashboard.read_text(encoding="utf-8")
+if "public final class LumiDriveAutoHome" not in auto_dashboard_text:
+    raise SystemExit("Invalid Auto Home Java source")
+(root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveAutoHome.java").write_text(
+    auto_dashboard_text, encoding="utf-8"
+)
+
+write_xml("fermata/src/main/res/values/lumidrive_auto.xml", """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lumidrive_auto_home">LumiDrive Auto Home</string>
+    <string name="lumidrive_auto_tagline">AUTO • MEDIA CENTER</string>
+    <string name="lumidrive_auto_welcome">Welcome</string>
+    <string name="lumidrive_auto_hint">Everything in one place</string>
+    <string name="lumidrive_auto_iptv">IPTV</string>
+    <string name="lumidrive_auto_youtube">YouTube</string>
+    <string name="lumidrive_auto_browser">Browser</string>
+    <string name="lumidrive_auto_library">Library</string>
+    <string name="lumidrive_auto_channels">Live channels</string>
+    <string name="lumidrive_auto_video">Video</string>
+    <string name="lumidrive_auto_websites">Websites</string>
+    <string name="lumidrive_auto_files">Media files</string>
+    <string name="lumidrive_auto_favorites">★ Favorites</string>
+    <string name="lumidrive_auto_settings">Settings</string>
+    <string name="lumidrive_auto_parked">For passengers or while parked</string>
+    <string name="lumidrive_auto_module_unavailable">This module is not installed</string>
+</resources>
+""")
+write_xml("fermata/src/main/res/values-ru/lumidrive_auto.xml", """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lumidrive_auto_home">Главная LumiDrive</string>
+    <string name="lumidrive_auto_tagline">AUTO • МЕДИАЦЕНТР</string>
+    <string name="lumidrive_auto_welcome">Добро пожаловать</string>
+    <string name="lumidrive_auto_hint">Твои медиа в одном месте</string>
+    <string name="lumidrive_auto_iptv">IPTV</string>
+    <string name="lumidrive_auto_youtube">YouTube</string>
+    <string name="lumidrive_auto_browser">Браузер</string>
+    <string name="lumidrive_auto_library">Медиатека</string>
+    <string name="lumidrive_auto_channels">Телеканалы</string>
+    <string name="lumidrive_auto_video">Видео</string>
+    <string name="lumidrive_auto_websites">Веб-сайты</string>
+    <string name="lumidrive_auto_files">Файлы</string>
+    <string name="lumidrive_auto_favorites">★ Избранное</string>
+    <string name="lumidrive_auto_settings">Настройки</string>
+    <string name="lumidrive_auto_parked">Для пассажира или на парковке</string>
+    <string name="lumidrive_auto_module_unavailable">Этот модуль не установлен</string>
+</resources>
+""")
+
+# Add Auto Home at car activity initialization, without changing lifecycle,
+# permissions, playback or existing Android Auto service implementations.
+replace_exact(
+    car_activity_path,
+    "import me.aap.fermata.ui.activity.MainActivityDelegate;",
+    "import me.aap.fermata.ui.activity.MainActivityDelegate;\n"
+    "import me.aap.fermata.ui.activity.LumiDriveAutoHome;",
+)
+replace_exact(
+    car_activity_path,
+    "\tprivate TextWatcher textWatcher;",
+    "\tprivate TextWatcher textWatcher;\n"
+    "\tprivate boolean lumiDriveHomeBackDown;",
+)
+replace_exact(
+    car_activity_path,
+    "\t\td.onActivityCreate(state);\n\t\treturn d;",
+    "\t\td.onActivityCreate(state);\n"
+    "\t\tView mainScreen = findViewById(R.id.main_activity);\n"
+    "\t\tif (mainScreen != null) mainScreen.post(() -> LumiDriveAutoHome.show(d));\n"
+    "\t\treturn d;",
+)
+replace_exact(
+    car_activity_path,
+    "\tpublic boolean onKeyDown(int keyCode, KeyEvent keyEvent) {\n"
+    "\t\tLog.i(keyEvent);\n",
+    "\tpublic boolean onKeyDown(int keyCode, KeyEvent keyEvent) {\n"
+    "\t\tLog.i(keyEvent);\n"
+    "\t\tif (keyCode == KEYCODE_BACK && LumiDriveAutoHome.hide(findViewById(R.id.main_activity))) {\n"
+    "\t\t\tlumiDriveHomeBackDown = true;\n"
+    "\t\t\treturn true;\n"
+    "\t\t}\n",
+)
+replace_exact(
+    car_activity_path,
+    "\tpublic boolean onKeyUp(int keyCode, KeyEvent keyEvent) {\n"
+    "\t\tLog.i(keyEvent);\n",
+    "\tpublic boolean onKeyUp(int keyCode, KeyEvent keyEvent) {\n"
+    "\t\tLog.i(keyEvent);\n"
+    "\t\tif (keyCode == KEYCODE_BACK && lumiDriveHomeBackDown) {\n"
+    "\t\t\tlumiDriveHomeBackDown = false;\n"
+    "\t\t\treturn true;\n"
+    "\t\t}\n",
+)
+# MainCarActivity uses a software D-pad cursor which searches children from
+# first to last. While dashboard is visible, target its real overlay first,
+# so taps never leak through into hidden video/toolbars underneath.
+replace_exact(
+    car_activity_path,
+    "\t\t\tfloat y = getY();\n"
+    "\t\t\tOverlayMenu m = activity.getActiveMenu();",
+    "\t\t\tfloat y = getY();\n"
+    "\t\t\tViewGroup root = screen();\n"
+    "\t\t\tView home = root.findViewWithTag(LumiDriveAutoHome.HOME_TAG);\n"
+    "\t\t\tif (home != null) {\n"
+    "\t\t\t\ttouch(home, x - home.getX(), y - home.getY(), false);\n"
+    "\t\t\t\treturn true;\n"
+    "\t\t\t}\n"
+    "\t\t\tOverlayMenu m = activity.getActiveMenu();",
+)
+replace_exact(
+    car_activity_path,
+    "\t\tpublic boolean onLongClick(View v) {\n"
+    "\t\t\tdelayedHide();\n"
+    "\t\t\tlongClick(screen(), getX(), getY());",
+    "\t\tpublic boolean onLongClick(View v) {\n"
+    "\t\t\tdelayedHide();\n"
+    "\t\t\tif (LumiDriveAutoHome.isVisible(screen())) return true;\n"
+    "\t\t\tlongClick(screen(), getX(), getY());",
+)
+
+# Existing "Home" navigation action was phone-only in 0.5.2. Extend it to
+# the car, where it now opens a separate design. Keep mirror mode excluded.
+nav_source = (root / nav_path).read_text(encoding="utf-8")
+original_home_call = "LumiDriveDashboard.show(MainActivityDelegate.get(item.getContext()));"
+if nav_source.count(original_home_call) != 2:
+    raise SystemExit("Expected exactly two phone Home navigation handlers")
+replace_exact(
+    nav_path,
+    "import me.aap.fermata.ui.activity.LumiDriveDashboard;",
+    "import me.aap.fermata.ui.activity.LumiDriveDashboard;\n"
+    "import me.aap.fermata.ui.activity.LumiDriveAutoHome;",
+)
+replace_exact(
+    nav_path,
+    "\t\t\t\t\tif (!MainActivityDelegate.get(ctx).getAppActivity().isCarActivity()\n"
+    "\t\t\t\t\t\t\t&& !FermataApplication.get().isMirroringMode()) {",
+    "\t\t\t\t\tif (!FermataApplication.get().isMirroringMode()) {",
+)
+replace_exact(
+    nav_path,
+    original_home_call,
+    "LumiDriveAutoHome.showForCurrentActivity(MainActivityDelegate.get(item.getContext()));",
+)
+
+auto_class_path = root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveAutoHome.java"
+if not auto_class_path.exists():
+    raise SystemExit("Missing new Auto Home Java class")
+car_content = (root / car_activity_path).read_text(encoding="utf-8")
+if car_content.count("LumiDriveAutoHome.show(d)") != 1:
+    raise SystemExit("Car Activity missing Auto Home initialization")
+if "touch(home, x - home.getX(), y - home.getY(), false);" not in car_content:
+    raise SystemExit("Car D-pad cursor did not receive Home hit-test protection")
+nav_content = (root / nav_path).read_text(encoding="utf-8")
+if nav_content.count("LumiDriveAutoHome.showForCurrentActivity") != 2:
+    raise SystemExit("Car Home overflow navigation handler missing or duplicated")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.6.0 LumiDrive Auto UI 1.0
+- New branded dark-purple landscape car dashboard with IPTV, YouTube,
+  Browser, Media Library, Favorites and Settings.
+- Clickable large cards use existing fragment destinations, no engine rewrite.
+- Android Auto CarActivity shows Home when opened; main phone and screen-mirroring
+  activities retain their existing, independent UI.
+- Bottom navigation 'Home' opens this dashboard from any regular car section.
+- Software D-pad cursor targets this dashboard instead of underlying controls.
+- Car Back dismisses Home safely without also processing the key-up event.
+- No changes to playback logic, auto-resume guard, permissions or AA safety.
+- Experimental preview v0.6.0 / versionCode 280.
+""", encoding="utf-8")
+print("LumiDrive Auto UI 1.0 home and car navigation enabled (v0.6.0).")
