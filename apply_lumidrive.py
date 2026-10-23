@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "278"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.6"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "279"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.7"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 278.
+- Package remains com.lumi.drive.auto; versionCode increased to 279.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -816,3 +816,98 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.5.6 / 278.
 """, encoding="utf-8")
 print("LumiDrive 0.5.6 Android Auto automatic resume suppression applied.")
+
+
+# LumiDrive 0.5.7 — replace BOTH Android Auto mirror-service icons.
+# Fermata defines mirror/mirror_fs in src/auto and separate API-26 adaptive
+# icons; earlier LumiDrive branding changed only launcher/media_service.
+# Rebrand drawable resources without modifying MirrorService/MirrorServiceFS.
+write_xml("fermata/src/auto/res/drawable/lumidrive_mirror_mark.xml", """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Cyan monitor and stand with a purple bezel. -->
+    <path android:fillColor="#AE8AFF"
+        android:pathData="M21,27 H87 V76 H21 Z"/>
+    <path android:fillColor="#27153D"
+        android:pathData="M27,33 H81 V70 H27 Z"/>
+    <path android:fillColor="#8FE7FF"
+        android:pathData="M49,76 H59 V83 H49 Z M38,83 H70 V88 H38 Z"/>
+    <!-- LumiDrive L and play triangle, matching the application palette. -->
+    <path android:fillColor="#8FE7FF"
+        android:pathData="M35,41 H41 V61 H49 V66 H35 Z"/>
+    <path android:fillColor="#FF7AC8"
+        android:pathData="M57,42 L74,53 L57,64 Z"/>
+</vector>
+""")
+write_xml("fermata/src/auto/res/drawable/lumidrive_mirror_fs_mark.xml", """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Fullscreen mirror: four bright corners and central LumiDrive mark. -->
+    <path android:fillColor="#AE8AFF"
+        android:pathData="M22,22 H86 V86 H22 Z"/>
+    <path android:fillColor="#27153D"
+        android:pathData="M29,29 H79 V79 H29 Z"/>
+    <path android:fillColor="#8FE7FF"
+        android:pathData="M32,35 H45 V40 H37 V48 H32 Z M63,35 H76 V48 H71 V40 H63 Z M32,60 H37 V69 H45 V74 H32 Z M71,60 H76 V74 H63 V69 H71 Z"/>
+    <path android:fillColor="#8FE7FF"
+        android:pathData="M42,45 H48 V61 H55 V66 H42 Z"/>
+    <path android:fillColor="#FF7AC8"
+        android:pathData="M57,44 L70,55 L57,65 Z"/>
+</vector>
+""")
+write_xml("fermata/src/auto/res/drawable/mirror.xml", """<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/lumidrive_background"/>
+    <item android:drawable="@drawable/lumidrive_mirror_mark"/>
+</layer-list>
+""")
+write_xml("fermata/src/auto/res/drawable/mirror_fs.xml", """<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/lumidrive_background"/>
+    <item android:drawable="@drawable/lumidrive_mirror_fs_mark"/>
+</layer-list>
+""")
+write_xml("fermata/src/auto/res/drawable-anydpi-v26/mirror.xml", """<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/lumidrive_background"/>
+    <foreground android:drawable="@drawable/lumidrive_mirror_mark"/>
+    <monochrome android:drawable="@drawable/lumidrive_monochrome"/>
+</adaptive-icon>
+""")
+write_xml("fermata/src/auto/res/drawable-anydpi-v26/mirror_fs.xml", """<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/lumidrive_background"/>
+    <foreground android:drawable="@drawable/lumidrive_mirror_fs_mark"/>
+    <monochrome android:drawable="@drawable/lumidrive_monochrome"/>
+</adaptive-icon>
+""")
+
+manifest = (root / "fermata/src/auto/AndroidManifest.xml").read_text(encoding="utf-8")
+if manifest.count('android:icon="@drawable/mirror"') != 1 or manifest.count('android:icon="@drawable/mirror_fs"') != 1:
+    raise SystemExit("Mirror service manifest icons changed upstream; inspect before release")
+for marker in ("mirror.xml", "mirror_fs.xml"):
+    for directory in ("drawable", "drawable-anydpi-v26"):
+        target = root / "fermata/src/auto/res" / directory / marker
+        if "lumidrive_" not in target.read_text(encoding="utf-8"):
+            raise SystemExit(f"Missing branded icon: {target}")
+
+# Update assistive description to reflect branded mirror service name; leave
+# upstream copyright/license attribution elsewhere completely untouched.
+for path in (root / "fermata/src/main/res").glob("values*/strings.xml"):
+    original = path.read_text(encoding="utf-8")
+    revised = original.replace("Fermata Mirror", "LumiDrive Mirror")
+    if revised != original:
+        path.write_text(revised, encoding="utf-8")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.5.7 Android Auto mirror-service icons
+- Both 'LumiDrive Mirror' and 'LumiDrive FS Mirror' now use LumiDrive
+  cyan/violet/pink artwork instead of upstream Fermata's mirror glyph.
+- Covers legacy drawable and Android 8+ adaptive icons.
+- Service manifest entries and mirroring behavior remain unchanged.
+- Assistive descriptions refer to LumiDrive Mirror.
+- Version 0.5.7 / 279.
+""", encoding="utf-8")
+print("LumiDrive 0.5.7 branded regular and fullscreen mirror icons applied.")
