@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "277"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.5"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "278"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.5.6"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 277.
+- Package remains com.lumi.drive.auto; versionCode increased to 278.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -658,3 +658,161 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.5.5 / 277.
 """, encoding="utf-8")
 print("LumiDrive 0.5.5 targeted Yandex Maps WebView fix applied.")
+
+
+# LumiDrive 0.5.6 — prevent Android Auto transport auto-resume on connection.
+# The AA host often issues an unsolicited MediaSession onPlay() shortly after
+# connecting. In unmodified Fermata this falls back to getLastPlayedItem(),
+# which can launch a saved live IPTV channel. Don't delete last-played history.
+# Route actual user actions (tap, chosen channel or notification play) around
+# this gate; the car service resets it on disconnect.
+callback_path = "fermata/src/main/java/me/aap/fermata/media/service/MediaSessionCallback.java"
+replace_exact(
+    callback_path,
+    "\tprivate boolean playOnPrepared;",
+    """\tprivate boolean playOnPrepared;
+    // Only protects the Android Auto app variant during a car connection.
+    private volatile boolean blockAutomaticCarResume;
+    private volatile boolean carPlaybackExplicitlyStarted;
+
+    public void beginCarSessionWithoutAutoplay() {
+        if (!BuildConfig.AUTO) return;
+        carPlaybackExplicitlyStarted = false;
+        blockAutomaticCarResume = true;
+        // If the AA host already started playback before this car activity
+        // connected, silence it; non-pausable live streams are stopped by onPause().
+        if (isPlaying()) onPause();
+    }
+
+    public void preventUnrequestedCarResume() {
+        if (!BuildConfig.AUTO || carPlaybackExplicitlyStarted) return;
+        blockAutomaticCarResume = true;
+        if (isPlaying()) onPause();
+    }
+
+    public void allowExplicitCarPlayback() {
+        blockAutomaticCarResume = false;
+        carPlaybackExplicitlyStarted = true;
+    }
+
+    public void endCarSession() {
+        blockAutomaticCarResume = false;
+        carPlaybackExplicitlyStarted = false;
+    }
+""",
+)
+replace_exact(
+    callback_path,
+    "\t@Override\n\tpublic void onPlay() {\n\t\tplayerTask.cancel();",
+    """\t@Override
+    public void onPlay() {
+        // Ignore automatic resume commands while AA is first connecting.
+        // Deliberate actions in LumiDrive call allowExplicitCarPlayback().
+        if (BuildConfig.AUTO && blockAutomaticCarResume) {
+            Log.i("LumiDrive: ignored unsolicited Android Auto Play request");
+            return;
+        }
+        playerTask.cancel();""",
+)
+replace_exact(
+    callback_path,
+    "\t@Override\n\tpublic void onPlayFromMediaId(String mediaId, Bundle extras) {\n\t\tplayerTask.cancel();",
+    """\t@Override
+    public void onPlayFromMediaId(String mediaId, Bundle extras) {
+        // An item chosen explicitly from the AA library is a user action.
+        allowExplicitCarPlayback();
+        playerTask.cancel();""",
+)
+# The on-screen phone/AA player controls call onPlay() directly through this
+# binder. Whitelist them without whitelisting the AA host's unsolicited onPlay.
+uibinder_path = "fermata/src/main/java/me/aap/fermata/media/service/FermataServiceUiBinder.java"
+replace_exact(
+    uibinder_path,
+    "\tpublic void playItem(PlayableItem i, long pos) {\n\t\tif (i.equals(getCurrentItem())",
+    "\tpublic void playItem(PlayableItem i, long pos) {\n"
+    "\t\tsessionCallback.allowExplicitCarPlayback();\n"
+    "\t\tif (i.equals(getCurrentItem())",
+)
+replace_exact(
+    uibinder_path,
+    "\t\t\tif (isPlaying()) getMediaSessionCallback().onPause();\n"
+    "\t\t\telse getMediaSessionCallback().onPlay();",
+    "\t\t\tif (isPlaying()) getMediaSessionCallback().onPause();\n"
+    "\t\t\telse {\n"
+    "\t\t\t\tgetMediaSessionCallback().allowExplicitCarPlayback();\n"
+    "\t\t\t\tgetMediaSessionCallback().onPlay();\n"
+    "\t\t\t}",
+)
+replace_exact(
+    uibinder_path,
+    "\t\t} else {\n\t\t\tmediaController.getTransportControls().play();\n\t\t}\n\t\treturn true;",
+    "\t\t} else {\n"
+    "\t\t\tgetMediaSessionCallback().allowExplicitCarPlayback();\n"
+    "\t\t\tmediaController.getTransportControls().play();\n"
+    "\t\t}\n\t\treturn true;",
+)
+# AA connects to the MediaBrowserService before (or instead of) launching
+# the activity in some vehicles. Arm the gate before the media host issues Play.
+service_path = "fermata/src/main/java/me/aap/fermata/media/service/FermataMediaService.java"
+replace_exact(
+    service_path,
+    "\tpublic IBinder onBind(Intent intent) {\n\t\tif (BuildConfig.D || !intent.hasExtra(INTENT_ATTR_NOTIF_COLOR)) {",
+    "\tpublic IBinder onBind(Intent intent) {\n"
+    "\t\tif (BuildConfig.AUTO && !ACTION_MEDIA_SERVICE.equals(intent.getAction())) {\n"
+    "\t\t\tcallback.preventUnrequestedCarResume();\n"
+    "\t\t}\n"
+    "\t\tif (BuildConfig.D || !intent.hasExtra(INTENT_ATTR_NOTIF_COLOR)) {",
+)
+# A tap on the app's Play action in the media notification is explicit.
+replace_exact(
+    service_path,
+    "\t\t\t\t\tcase INTENT_PLAY -> callback.onPlay();",
+    "\t\t\t\t\tcase INTENT_PLAY -> {\n"
+    "\t\t\t\t\t\tcallback.allowExplicitCarPlayback();\n"
+    "\t\t\t\t\t\tcallback.onPlay();\n"
+    "\t\t\t\t\t}",
+)
+# Car UI attachment can occur without a MediaBrowserService bind, so arm it
+# here as well. The phone activity is unaffected.
+car_activity_path = "fermata/src/auto/java/me/aap/fermata/auto/MainCarActivity.java"
+replace_exact(
+    car_activity_path,
+    "\tprivate MainActivityDelegate onCreate(Bundle state, FermataMediaServiceConnection s) {\n"
+    "\t\tMainActivityDelegate d = new MainActivityDelegate(this, s.createBinder());",
+    "\tprivate MainActivityDelegate onCreate(Bundle state, FermataMediaServiceConnection s) {\n"
+    "\t\ts.getMediaSessionCallback().beginCarSessionWithoutAutoplay();\n"
+    "\t\tMainActivityDelegate d = new MainActivityDelegate(this, s.createBinder());",
+)
+car_service_path = "fermata/src/auto/java/me/aap/fermata/auto/CarService.java"
+replace_exact(
+    car_service_path,
+    "\t\tif ((cb != null) && cb.isPlaying()) cb.onPause();\n"
+    "\t\ts.disconnect();",
+    "\t\tif (cb != null) {\n"
+    "\t\t\tif (cb.isPlaying()) cb.onPause();\n"
+    "\t\t\tcb.endCarSession();\n"
+    "\t\t}\n"
+    "\t\ts.disconnect();",
+)
+
+# Guard against accidentally restoring auto-resume or affecting the phone UI.
+cb_content = (root / callback_path).read_text(encoding="utf-8")
+if cb_content.count("if (BuildConfig.AUTO && blockAutomaticCarResume)") != 1:
+    raise SystemExit("AA autoplay guard missing or duplicated")
+if cb_content.count("allowExplicitCarPlayback();") != 1:
+    raise SystemExit("AA explicit-selection handler missing")
+car_content = (root / car_activity_path).read_text(encoding="utf-8")
+if car_content.count("beginCarSessionWithoutAutoplay();") != 1:
+    raise SystemExit("AA car session startup guard missing")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.5.6 Android Auto autoplay suppression
+- Suppress unsolicited media-session Play sent on initial Android Auto attach.
+- Preserve the last IPTV channel and viewing history; don't delete saved media.
+- Keep explicit channel selection, play/pause UI and notification Play functional.
+- Reset guard on car disconnect. Phone media playback remains unchanged.
+- AA's external transport Play commands are intentionally ignored while the
+  guard is active; interact with LumiDrive's controls/select media to unlock.
+- Version 0.5.6 / 278.
+""", encoding="utf-8")
+print("LumiDrive 0.5.6 Android Auto automatic resume suppression applied.")
