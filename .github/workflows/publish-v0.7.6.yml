@@ -1,0 +1,124 @@
+name: Publish LumiDrive v0.7.6 Branded Update
+
+on:
+  push:
+    branches:
+      - lumidrive-v0.7.6-update-icon
+    paths:
+      - .github/workflows/publish-v0.7.6.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    if: github.repository == 'serge9900/LumiDrive-build'
+    name: Validate v0.7.6 and publish installable GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: serge9900/LumiDrive-build
+      TAG: v0.7.6
+      SOURCE_RUN_ID: '40522099463'
+      SOURCE_SHA: 91abfed4418910a27e123d6575daae65c8a82581
+
+    steps:
+      - name: Checkout release documentation
+        uses: actions/checkout@v4
+
+      - name: Verify pinned successful build and APK SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s release-notes/v0.7.6.md
+          source_status="$(gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID" --jq '.conclusion + " " + .head_sha')"
+          if [[ "$source_status" != "success $SOURCE_SHA" ]]; then
+            echo "::error::Pinned v0.7.6 run is not the verified successful source build"
+            exit 1
+          fi
+          mkdir -p dist
+          gh run download "$SOURCE_RUN_ID" -R "$REPO" \
+            -n LumiDrive-v0.7.6-APK-arm64 -D dist
+          test -s dist/LumiDrive-v0.7.6-arm64.apk
+          test -s dist/SHA256SUMS.txt
+          expected="$(awk 'NR==1{print $1}' dist/SHA256SUMS.txt)"
+          actual="$(sha256sum dist/LumiDrive-v0.7.6-arm64.apk | awk '{print $1}')"
+          if [[ "$expected" != "$actual" ]]; then
+            echo "::error::v0.7.6 artifact SHA-256 mismatch"
+            exit 1
+          fi
+          unzip -tqq dist/LumiDrive-v0.7.6-arm64.apk
+          ( cd dist && sha256sum LumiDrive-v0.7.6-arm64.apk > SHA256SUMS.txt )
+          echo 'Pinned run, APK SHA256 and ZIP verified.'
+
+      - name: Install Android SDK build tools
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;35.0.0'
+
+      - name: Verify package identity, version, and signing certificate against v0.7.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools_dir="$ANDROID_HOME/build-tools/35.0.0"
+          apk=dist/LumiDrive-v0.7.6-arm64.apk
+          package_line="$("$tools_dir/aapt" dump badging "$apk" | grep '^package:')"
+          echo "$package_line"
+          if [[ "$package_line" != *"name='com.lumi.drive.auto' versionCode='288' versionName='0.7.6'"* ]]; then
+            echo "::error::Wrong APK package or version; refusing public release"
+            exit 1
+          fi
+          "$tools_dir/apksigner" verify --verbose --print-certs "$apk" > dist/new-cert.txt
+          new_cert="$(grep -m1 '^Signer #1 certificate SHA-256 digest:' dist/new-cert.txt | awk '{print $NF}')"
+          test -n "$new_cert"
+          mkdir -p previous
+          gh release download v0.7.5 -R "$REPO" \
+            --pattern 'LumiDrive-v0.7.5-arm64.apk' --dir previous
+          old_apk=previous/LumiDrive-v0.7.5-arm64.apk
+          test -s "$old_apk"
+          old_package="$("$tools_dir/aapt" dump badging "$old_apk" | grep '^package:')"
+          echo "$old_package"
+          if [[ "$old_package" != *"name='com.lumi.drive.auto' versionCode='287' versionName='0.7.5'"* ]]; then
+            echo "::error::Previous release is not expected LumiDrive version"
+            exit 1
+          fi
+          "$tools_dir/apksigner" verify --verbose --print-certs "$old_apk" > previous/old-cert.txt
+          old_cert="$(grep -m1 '^Signer #1 certificate SHA-256 digest:' previous/old-cert.txt | awk '{print $NF}')"
+          test -n "$old_cert"
+          if [[ "$old_cert" != "$new_cert" ]]; then
+            echo "::error::Signing key differs from v0.7.5 — cannot install on top"
+            exit 1
+          fi
+          echo 'APK identity, version increment and signature compatibility verified.'
+
+      - name: Publish official LumiDrive v0.7.6 Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
+            echo "::error::v0.7.6 exists already; refusing to replace APK"
+            exit 1
+          fi
+          gh release create "$TAG" \
+            dist/LumiDrive-v0.7.6-arm64.apk dist/SHA256SUMS.txt \
+            -R "$REPO" --target "$SOURCE_SHA" \
+            --title 'LumiDrive v0.7.6 — Branded update dialog icon' \
+            --notes-file release-notes/v0.7.6.md \
+            --latest
+
+      - name: Confirm latest published release exposes matching APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          names="$(gh release view "$TAG" -R "$REPO" --json assets --jq '.assets[].name')"
+          grep -Fx 'LumiDrive-v0.7.6-arm64.apk' <<<"$names"
+          grep -Fx 'SHA256SUMS.txt' <<<"$names"
+          latest="$(gh api "repos/$REPO/releases/latest" --jq .tag_name)"
+          if [[ "$latest" != "$TAG" ]]; then
+            echo "::error::Latest update feed reports $latest, not $TAG"
+            exit 1
+          fi
+          echo "Live update feed now offers v0.7.6"
