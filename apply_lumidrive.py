@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "281"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.6.1"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "282"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.0"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 281.
+- Package remains com.lumi.drive.auto; versionCode increased to 282.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -1103,3 +1103,205 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.6.1 / 281.
 """, encoding="utf-8")
 print("LumiDrive v0.6.1 developer credit corrected to Sergey Vardanyan.")
+
+
+# LumiDrive v0.7.0 — first-party in-app APK updates, using the proven Fermata
+# download/dialog/installer implementation but ONLY our GitHub releases.
+# Older LumiDrive versions intentionally blocked this path to avoid accidentally
+# installing the ORIGINAL Fermata. We now explicitly pin our own releases.
+main_java_path = "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java"
+replace_exact(
+    main_java_path,
+    'public void checkUpdates() {\n\t\tif (getPackageName().startsWith("com.lumi.drive")) return;\n\t\tif (!BuildConfig.AUTO) return;',
+    '''public void checkUpdates() {
+        checkUpdates(false);
+    }
+
+    /** Check manually from Settings, or quietly at most daily at startup. */
+    public void checkUpdates(boolean manual) {
+        // Never try to update the separate debug/mobile package with an Auto APK.
+        if (!"com.lumi.drive.auto".equals(getPackageName())) return;
+        if (!BuildConfig.AUTO) return;''',
+)
+replace_exact(
+    main_java_path,
+    'String reqUrl = "https://api.github.com/repos/AndreyPavlenko/Fermata/releases/latest";',
+    'String reqUrl = "https://api.github.com/repos/serge9900/LumiDrive-build/releases/latest";',
+)
+replace_exact(
+    main_java_path,
+    '''\t\t\t\t\tString tag = json.getString("tag_name");
+\t\t\t\t\tString[] res = new String[2];
+\t\t\t\t\tres[0] = tag;
+\t\t\t\t\tint idx = tag.indexOf('(');
+\t\t\t\t\tif (idx != -1) tag = tag.substring(0, idx);
+
+\t\t\t\t\tif (NaturalOrderComparator.compareNatural(BuildConfig.VERSION_NAME, tag.trim()) < 0) {''',
+    '''                    String tag = json.getString("tag_name").trim();
+                    // Explicit versioned tags only: v0.7.0, v0.7.1, ...
+                    if (!tag.matches("v[0-9]+\\\\.[0-9]+\\\\.[0-9]+")) {
+                        Log.w("Ignoring unrecognized LumiDrive release tag: ", tag);
+                        return completedNull();
+                    }
+                    String version = tag.substring(1);
+                    String[] res = new String[3]; // version, APK URL, sha256 digest
+                    res[0] = version;
+
+                    if (NaturalOrderComparator.compareNatural(BuildConfig.VERSION_NAME, version) < 0) {''',
+)
+replace_exact(
+    main_java_path,
+    '''\t\t\t\t\t\tString ext = "armeabi".equals(Build.SUPPORTED_ABIS[0]) ? "-arm.apk" : "-arm64.apk";
+
+\t\t\t\t\t\tfor (int i = 0, n = assets.length(); i < n; i++) {
+\t\t\t\t\t\t\tJSONObject asset = assets.getJSONObject(i);
+\t\t\t\t\t\t\tString name = asset.getString("name");
+\t\t\t\t\t\t\tif (name.endsWith(ext)) res[1] = asset.getString("browser_download_url");
+\t\t\t\t\t\t}''',
+    '''                        String expectedName = "LumiDrive-" + tag + "-arm64.apk";
+                        String expectedPrefix =
+                                "https://github.com/serge9900/LumiDrive-build/releases/download/"
+                                        + tag + "/";
+                        for (int i = 0, n = assets.length(); i < n; i++) {
+                            JSONObject asset = assets.getJSONObject(i);
+                            if (!expectedName.equals(asset.optString("name"))) continue;
+                            String download = asset.optString("browser_download_url", "");
+                            // Refuse unrelated/misnamed/non-HTTPS artifacts.
+                            if (!download.startsWith(expectedPrefix)) continue;
+                            res[1] = download;
+                            res[2] = asset.optString("digest", "");
+                            break;
+                        }''',
+)
+replace_exact(
+    main_java_path,
+    '''\t\t\t}).main().onSuccess(res -> {
+\t\t\t\tif (res == null) return;
+\t\t\t\tUiUtils.showQuestion(getContext(), getString(R.string.update),''',
+    '''            }).main().onSuccess(res -> {
+                if (res == null) {
+                    if (manual) showAlert(this, getString(R.string.lumidrive_no_update));
+                    return;
+                }
+                UiUtils.showQuestion(getContext(), getString(R.string.update),''',
+)
+replace_exact(
+    main_java_path,
+    '.onSuccess(r -> update(res[1], ps, deletePref));',
+    '.onSuccess(r -> update(res[1], res[2], ps, deletePref));',
+)
+replace_exact(
+    main_java_path,
+    '''private FutureSupplier<Void> update(String uri, PreferenceStore ps,
+\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tPref<Supplier<String[]>> deletePref) {''',
+    '''private FutureSupplier<Void> update(String uri, String sha256, PreferenceStore ps,
+                                                        Pref<Supplier<String[]>> deletePref) {''',
+)
+replace_exact(
+    main_java_path,
+    '''\t\t\treturn d.download(uri, f).then(s -> {
+\t\t\t\tUri u = (SDK_INT >= Build.VERSION_CODES.N) ?''',
+    '''            return d.download(uri, f).then(s -> {
+                // GitHub releases expose an optional SHA-256 asset digest.
+                // Refuse an altered download before launching Android installer.
+                try {
+                    if (sha256 != null && sha256.startsWith("sha256:")
+                            && !lumiDriveDigestMatches(f, sha256.substring(7))) {
+                        //noinspection ResultOfMethodCallIgnored
+                        f.delete();
+                        App.get().run(() -> showAlert(this,
+                                getString(R.string.lumidrive_update_bad_digest)));
+                        return failed(new SecurityException("APK SHA-256 mismatch"));
+                    }
+                } catch (Exception ex) {
+                    Log.e(ex, "Cannot verify LumiDrive update download");
+                    return failed(ex);
+                }
+                Uri u = (SDK_INT >= Build.VERSION_CODES.N) ?''',
+)
+replace_exact(
+    main_java_path,
+    '\tprivate static File createTempFile(File dir) {',
+    '''    private static boolean lumiDriveDigestMatches(File file, String expected)
+            throws Exception {
+        if (!expected.matches("[0-9a-fA-F]{64}")) return false;
+        java.security.MessageDigest hash = java.security.MessageDigest.getInstance("SHA-256");
+        try (java.io.FileInputStream input = new java.io.FileInputStream(file)) {
+            byte[] block = new byte[65536];
+            int count;
+            while ((count = input.read(block)) != -1) {
+                hash.update(block, 0, count);
+            }
+        }
+        StringBuilder hex = new StringBuilder(64);
+        for (byte part : hash.digest()) {
+            hex.append(String.format(java.util.Locale.ROOT, "%02x", part & 0xff));
+        }
+        return expected.equalsIgnoreCase(hex.toString());
+    }
+
+    private static File createTempFile(File dir) {''',
+)
+# Existing automatic checks are already limited to once per 24 h by
+# MainActivityPrefs.getCheckUpdatesPref(). Add a manual Settings button.
+settings_path = "fermata/src/main/java/me/aap/fermata/ui/fragment/SettingsFragment.java"
+replace_exact(
+    settings_path,
+    '''\t\t\t\to.pref = MainActivityPrefs.CHECK_UPDATES;
+\t\t\t\to.title = R.string.check_updates;
+\t\t\t});''',
+    '''                o.pref = MainActivityPrefs.CHECK_UPDATES;
+                o.title = R.string.check_updates;
+            });
+            if (a.getAppActivity() instanceof me.aap.fermata.ui.activity.MainActivity
+                    && !a.isCarActivityNotMirror()) {
+                sub1.addButton(o -> {
+                    o.title = R.string.lumidrive_check_now;
+                    o.onClick = () -> ((me.aap.fermata.ui.activity.MainActivity)
+                            a.getAppActivity()).checkUpdates(true);
+                });
+            }''',
+)
+write_xml("fermata/src/main/res/values/lumidrive_updates.xml", """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lumidrive_check_now">Check for LumiDrive updates now</string>
+    <string name="lumidrive_no_update">No newer published LumiDrive update is available.</string>
+    <string name="lumidrive_update_bad_digest">The downloaded update failed its integrity check and will not be installed.</string>
+</resources>
+""")
+write_xml("fermata/src/main/res/values-ru/lumidrive_updates.xml", """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lumidrive_check_now">Проверить обновления LumiDrive</string>
+    <string name="lumidrive_no_update">Новых опубликованных обновлений LumiDrive пока нет.</string>
+    <string name="lumidrive_update_bad_digest">Ошибка проверки загруженного обновления. Установка отменена.</string>
+</resources>
+""")
+updated_main = (root / main_java_path).read_text(encoding="utf-8")
+if "repos/AndreyPavlenko/Fermata/releases/latest" in updated_main:
+    raise SystemExit("SECURITY: updater still points at upstream Fermata!")
+if updated_main.count("repos/serge9900/LumiDrive-build/releases/latest") != 1:
+    raise SystemExit("Wrong LumiDrive release API endpoint")
+if updated_main.count("lumiDriveDigestMatches(f, sha256.substring(7))") != 1:
+    raise SystemExit("Update checksum guard missing")
+if updated_main.count('if (!"com.lumi.drive.auto".equals(getPackageName())) return;') != 1:
+    raise SystemExit("LumiDrive Auto package safety gate missing")
+updated_settings = (root / settings_path).read_text(encoding="utf-8")
+if updated_settings.count("lumidrive_check_now") != 1:
+    raise SystemExit("Manual update check is missing from Settings")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.0 first-party LumiDrive updates
+- Re-enable the existing tested Android update prompt/downloader/installer,
+  ONLY for the exact package com.lumi.drive.auto.
+- Check the public latest stable release in serge9900/LumiDrive-build,
+  never the original upstream Fermata release feed.
+- Only accept exact version-tagged LumiDrive-vX.Y.Z-arm64.apk assets.
+- Verify GitHub's SHA256 asset digest when present before install.
+- Preserve the 24-hour automatic check interval, user-controlled toggle,
+  system installation confirmation and update cache deletion.
+- Add manual "Check for LumiDrive updates" action under phone Settings.
+- No checks/prompts while in CarActivity; Android Auto and Mirror unchanged.
+- Next releases must be published as GitHub Releases with signed APK assets.
+- Version 0.7.0 / versionCode 282.
+""", encoding="utf-8")
+print("LumiDrive 0.7.0 first-party GitHub Releases updater enabled.")
