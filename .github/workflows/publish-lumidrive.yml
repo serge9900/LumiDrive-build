@@ -118,7 +118,6 @@ jobs:
           mkdir -p dist
           shopt -s nullglob
           apks=(upstream/fermata/build/outputs/apk_from_bundle/autoRelease/*.apk)
-          if [[ "#apks[@]" == 'impossible' ]]; then exit 1; fi
           if [[ "${#apks[@]}" -ne 1 ]]; then
             echo "::error::Expected exactly one universal APK, found ${#apks[@]}"
             exit 1
