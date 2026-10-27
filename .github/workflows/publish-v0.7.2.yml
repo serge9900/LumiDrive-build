@@ -1,0 +1,125 @@
+name: Publish LumiDrive v0.7.2 verified test release
+
+on:
+  push:
+    branches:
+      - lumidrive-v0.7.2-diagnostics
+    paths:
+      - .github/workflows/publish-v0.7.2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    if: github.repository == 'serge9900/LumiDrive-build'
+    name: Verify APK compatibility and publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: v0.7.2
+      REPO: serge9900/LumiDrive-build
+      # Pin to the green, validated build (including Authorization Bearer tests).
+      SOURCE_RUN_ID: '40502498265'
+      SOURCE_SHA: fbdbcefb7baeb94198a327fb63153017b87ac956
+    steps:
+      - name: Checkout release notes and sources
+        uses: actions/checkout@v4
+
+      - name: Verify GitHub source run and download built APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$(gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID" \
+            --jq '.conclusion + " " + .head_sha')" == "success $SOURCE_SHA" ]] || {
+            echo "::error::Source build not successful or commit SHA changed"
+            exit 1
+          }
+          mkdir -p dist
+          gh run download "$SOURCE_RUN_ID" -R "$REPO" \
+            -n LumiDrive-v0.7.2-APK-arm64 -D dist
+          test -s dist/LumiDrive-v0.7.2-arm64.apk
+          test -s dist/SHA256SUMS.txt
+          sha_expected="$(awk 'NR==1 {print $1}' dist/SHA256SUMS.txt)"
+          sha_actual="$(sha256sum dist/LumiDrive-v0.7.2-arm64.apk | awk '{print $1}')"
+          if [[ "$sha_expected" != "$sha_actual" ]]; then
+            echo "::error::Uploaded APK checksum differs from source build"
+            exit 1
+          fi
+          # Re-create portable checksum file for GitHub Release consumers.
+          ( cd dist && sha256sum LumiDrive-v0.7.2-arm64.apk > SHA256SUMS.txt )
+          unzip -tqq dist/LumiDrive-v0.7.2-arm64.apk
+          echo "Source build, APK ZIP and SHA-256 verified"
+
+      - name: Set up Android SDK to verify APK signature and version
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+
+      - name: Check package identity and signing compatibility with v0.7.0 and v0.7.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools_dir="$ANDROID_HOME/build-tools/35.0.0"
+          if [[ ! -x "$tools_dir/apksigner" || ! -x "$tools_dir/aapt" ]]; then
+            sdkmanager --install 'build-tools;35.0.0' >/dev/null
+          fi
+          apk='dist/LumiDrive-v0.7.2-arm64.apk'
+          package_line="$("$tools_dir/aapt" dump badging "$apk" | grep '^package:')"
+          echo "$package_line"
+          if [[ "$package_line" != *"name='com.lumi.drive.auto' versionCode='284' versionName='0.7.2'"* ]]; then
+            echo "::error::Unexpected package name/version; do not publish an unsafe update"
+            exit 1
+          fi
+
+          "$tools_dir/apksigner" verify --verbose --print-certs "$apk" > dist/cert-v0.7.2.txt
+          new_cert="$(grep -m1 '^Signer #1 certificate SHA-256 digest:' \
+            dist/cert-v0.7.2.txt | awk '{print $NF}')"
+          test -n "$new_cert"
+          echo "v0.7.2 signer SHA-256: $new_cert"
+
+          # In-app Android update requires a compatible signing certificate.
+          mkdir -p previous
+          for v in 0.7.0 0.7.1; do
+            if [[ "$v" == "0.7.0" ]]; then
+              run_id=40494510314
+            else
+              run_id=40498166441
+            fi
+            gh run download "$run_id" -R "$REPO" \
+              -n "LumiDrive-v$v-APK-arm64" -D "previous/v$v"
+            old_apk="previous/v$v/LumiDrive-v$v-arm64.apk"
+            test -s "$old_apk"
+            "$tools_dir/apksigner" verify --verbose --print-certs "$old_apk" \
+              > "previous/v$v/cert.txt"
+            old_cert="$(grep -m1 '^Signer #1 certificate SHA-256 digest:' \
+              "previous/v$v/cert.txt" | awk '{print $NF}')"
+            echo "v$v signer SHA-256: $old_cert"
+            if [[ "$new_cert" != "$old_cert" ]]; then
+              echo "::error::APK certificate differs from v$v — in-app Android update would fail. Release aborted."
+              exit 1
+            fi
+          done
+          echo "APK signature, package and version are compatible with previous builds"
+
+      - name: Publish v0.7.2 GitHub Release without modifying any APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" -R "$REPO" >/dev/null 2>&1; then
+            echo "::error::Release $RELEASE_TAG already exists; refusing to overwrite"
+            exit 1
+          fi
+          test -s docs/releases/v0.7.2.md
+          gh release create "$RELEASE_TAG" \
+            dist/LumiDrive-v0.7.2-arm64.apk dist/SHA256SUMS.txt \
+            -R "$REPO" \
+            --target "$SOURCE_SHA" \
+            --title 'LumiDrive v0.7.2 — Diagnostics (test release)' \
+            --notes-file docs/releases/v0.7.2.md
+          gh release view "$RELEASE_TAG" -R "$REPO" \
+            --json url,isDraft,isPrerelease,assets,tagName \
+            --jq '{url: .url, tag: .tagName, draft: .isDraft, prerelease: .isPrerelease, assets: [.assets[].name]}'
