@@ -1737,7 +1737,7 @@ for locale, values in (
     if xml.count("</resources>") != 1:
         raise SystemExit(f"Invalid diagnostics resource: {locale}")
     additions = "".join(
-        f'    <string name="{key}">{value}</string>\\n'
+        f'    <string name="{key}">{value}</string>\n'
         for key, value in zip(names, values)
     )
     xml = xml.replace("</resources>", additions + "</resources>")
