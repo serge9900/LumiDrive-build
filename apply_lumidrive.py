@@ -1394,10 +1394,11 @@ replace_exact(
     '''File lumiLog = new File(dir, "LumiDrive.log");
         File oldLog = new File(dir, "Fermata.log");
         if (!lumiLog.exists() && oldLog.isFile()) {
-            // Best effort: preserve log history from earlier LumiDrive builds.
-            if (!oldLog.renameTo(lumiLog)) {
-                Log.w("Could not rename old Fermata.log to LumiDrive.log");
-            }
+            // Logger initialization calls getLogFile(): avoid logging here
+            // because re-entering Log while its static logger initializes
+            // can cause an initialization error if migration fails.
+            //noinspection ResultOfMethodCallIgnored
+            oldLog.renameTo(lumiLog);
         }
         return lumiLog;''',
 )
