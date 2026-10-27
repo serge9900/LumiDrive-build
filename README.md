@@ -8,15 +8,15 @@
 **A modern, experimental Android multimedia experience.**  
 **Современный экспериментальный медиаплеер для Android.**
 
-![Version](https://img.shields.io/badge/preview-v0.5.4-bd87ff?style=flat-square)
+![Version](https://img.shields.io/badge/preview-v0.7.0-bd87ff?style=flat-square)
 ![Android](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white&style=flat-square)
 ![Architecture](https://img.shields.io/badge/APK-arm64--v8a-90dfff?style=flat-square)
 ![Language](https://img.shields.io/badge/UI-Русский%20%7C%20English-ff7ac8?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPL--3.0-a987ed?style=flat-square)
 
-[![Android build](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml/badge.svg?branch=lumidrive-v0.5.4-binance-support)](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)
+[![Android build](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml/badge.svg?branch=lumidrive-v0.7.0-updater)](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)
 
-[🇬🇧 English](#-english) · [🇷🇺 Русский](#-русский) · [Latest development branch](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.5.4-binance-support) · [Builds / APK](https://github.com/serge9900/LumiDrive-build/actions) · [Developer](https://github.com/serge9900)
+[🇬🇧 English](#-english) · [🇷🇺 Русский](#-русский) · [Latest development branch](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.0-updater) · [Builds / APK](https://github.com/serge9900/LumiDrive-build/actions) · [Developer](https://github.com/serge9900)
 
 </div>
 
@@ -45,15 +45,17 @@ The LumiDrive phone interface uses a deep-purple background, rounded tiles, mode
 
 ### 🚀 Get the latest preview APK
 
-> **Latest development preview: `v0.5.4 (276)`.** Source changes live on [`lumidrive-v0.5.4-binance-support`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.5.4-binance-support). The default `main` branch still contains the older **v0.3 build tools**. This is **not** a verified public release.
+> **Latest development preview: `v0.7.0 (276)`.** Source changes live on [`lumidrive-v0.7.0-updater`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.0-updater). The default `main` branch still contains the older **v0.3 build tools**. This is **not** a verified public release.
 
 1. Open **[GitHub Actions → Build LumiDrive APK](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)**.
-2. Open a successful run for the `lumidrive-v0.5.4-binance-support` branch, or choose **Run workflow** and select that branch.
-3. In the run summary, find **Artifacts** and download `LumiDrive-v0.5.4-APK-arm64`.
-4. Extract the ZIP and install `LumiDrive-v0.5.4-arm64.apk` on a compatible Android phone.
+2. Open a successful run for the `lumidrive-v0.7.0-updater` branch, or choose **Run workflow** and select that branch.
+3. In the run summary, find **Artifacts** and download `LumiDrive-v0.7.0-APK-arm64`.
+4. Extract the ZIP and install `LumiDrive-v0.7.0-arm64.apk` on a compatible Android phone.
 5. Test IPTV, YouTube, browser and navigation on the phone first. Test Android Auto only while safely parked.
 
-**Updates:** An APK can update your existing LumiDrive installation only if the package ID and signing certificate are compatible. Back up data before experimenting; don't uninstall a working build merely to try a preview.
+**In-app updates (new in v0.7.0):** After installing this preview once, LumiDrive can check our **published GitHub Releases** at app start (at most daily) or manually under **Settings → Other → Check for LumiDrive updates now**. If a newer release has a matching APK, it prompts before downloading, then opens Android's installation confirmation. Actions Artifacts are NOT update releases; the APK must be attached to a published stable GitHub Release. Read the [update/publishing guide](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.0-updater/docs/UPDATING.md).
+
+**Signature compatibility:** An APK can update your existing LumiDrive installation only if the package ID and signing certificate match, and versionCode increases. Earlier test builds used a publicly distributed development signing key; do not use that key for a production launch. Migrating to a private signing key will require one careful reinstall after backing up playlists and settings.
 
 **No Android Studio needed** to download an existing CI build. GitHub Actions artifacts are temporary and require GitHub access.
 
@@ -61,9 +63,9 @@ The LumiDrive phone interface uses a deep-purple background, rounded tiles, mode
 
 The build workflow checks out **Fermata 2.0.2**, its submodules and this repository's LumiDrive modifications, then compiles an Android APK using Gradle and Java 17.
 
-- **[`apply_lumidrive.py` — branding and code patches](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/apply_lumidrive.py)**
-- **[`src/LumiDriveDashboard.java` — LumiDrive phone dashboard](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/src/LumiDriveDashboard.java)**
-- **[`build-lumidrive.yml` — automated APK build](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/.github/workflows/build-lumidrive.yml)**
+- **[`apply_lumidrive.py` — branding and code patches](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.0-updater/apply_lumidrive.py)**
+- **[`src/LumiDriveDashboard.java` — LumiDrive phone dashboard](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.0-updater/src/LumiDriveDashboard.java)**
+- **[`build-lumidrive.yml` — automated APK build](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.0-updater/.github/workflows/build-lumidrive.yml)**
 
 This repository contains **LumiDrive's patch/build sources**, not a complete standalone copy of Fermata or a permanently hosted APK. The pinned upstream source is downloaded as part of the build.
 
@@ -100,20 +102,24 @@ This repository contains **LumiDrive's patch/build sources**, not a complete sta
 ### 📦 Как скачать и установить
 
 1. Перейди в **[GitHub Actions → Build LumiDrive APK](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)**.
-2. Выбери успешную сборку ветки `lumidrive-v0.5.4-binance-support`. Если сборки нет, нажми **Run workflow** и выбери эту ветку.
-3. Внизу страницы, в разделе **Artifacts**, скачай архив `LumiDrive-v0.5.4-APK-arm64`.
-4. Распакуй ZIP и установи `LumiDrive-v0.5.4-arm64.apk` на Android-телефон с подходящей архитектурой.
+2. Выбери успешную сборку ветки `lumidrive-v0.7.0-updater`. Если сборки нет, нажми **Run workflow** и выбери эту ветку.
+3. Внизу страницы, в разделе **Artifacts**, скачай архив `LumiDrive-v0.7.0-APK-arm64`.
+4. Распакуй ZIP и установи `LumiDrive-v0.7.0-arm64.apk` на Android-телефон с подходящей архитектурой.
 5. Сначала проверь функции на телефоне, затем — Android Auto в припаркованном автомобиле.
 
-**Важно:** текущая экспериментальная версия — **0.5.4 (276)**, исходный код — в отдельной ветке разработки. Ветка `main` пока содержит сборочные инструменты старой v0.3.
+**Важно:** текущая экспериментальная версия — **0.7.0 (282)**, исходный код — в отдельной ветке разработки. Ветка `main` пока содержит сборочные инструменты старой v0.3.
 
-Если Android не позволяет установить APK поверх прежней версии, проверь подпись приложения и идентификатор пакета. Перед любыми переустановками сохрани важные настройки и плейлисты.
+**Автообновления появились в v0.7.0.** После однократной установки этой версии LumiDrive будет проверять **опубликованные GitHub Releases** при запуске на телефоне (не чаще раза в сутки). Также можно нажать **Настройки → Другое → Проверить обновления LumiDrive**. Когда появится более новая опубликованная версия, LumiDrive предложит скачать APK и запустит системное подтверждение установки Android.
+
+**Важно:** файлы в GitHub Actions → Artifacts не считаются опубликованными обновлениями. Необходим именно GitHub Release с прикреплённым APK. Подробности: [как работает обновление и публикация](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.0-updater/docs/UPDATING.md).
+
+Если Android не позволяет установить APK поверх прежней версии, проверь подпись приложения и идентификатор пакета. Предыдущие тестовые сборки использовали общедоступный ключ подписи Fermata — для публичного выпуска нужен собственный приватный ключ, а переход на него потребует однократной переустановки. Перед этим сохрани плейлисты и настройки.
 
 ### 🔧 Исходники и разработка
 
 Для сборки используются исходники **Fermata 2.0.2** и собственные изменения LumiDrive. Всё выполняется через GitHub Actions, поэтому для скачивания APK Android Studio не требуется.
 
-Полезные файлы: [скрипт изменений](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/apply_lumidrive.py), [главный экран](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/src/LumiDriveDashboard.java), [сборка GitHub Actions](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.5.4-binance-support/.github/workflows/build-lumidrive.yml).
+Полезные файлы: [скрипт изменений](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.0-updater/apply_lumidrive.py), [главный экран](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.0-updater/src/LumiDriveDashboard.java), [сборка GitHub Actions](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.0-updater/.github/workflows/build-lumidrive.yml).
 
 ### ⚠️ Что важно знать
 
@@ -157,6 +163,6 @@ LumiDrive is an independent derivative project; it is **not officially affiliate
 ---
 
 **Made with 💜 by [Sergey Vardanyan](https://github.com/serge9900)**  
-*LumiDrive · Experimental Android multimedia project · Preview v0.5.4*
+*LumiDrive · Experimental Android multimedia project · Preview v0.7.0*
 
 </div>
