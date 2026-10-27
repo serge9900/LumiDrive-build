@@ -1305,3 +1305,42 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.7.0 / versionCode 282.
 """, encoding="utf-8")
 print("LumiDrive 0.7.0 first-party GitHub Releases updater enabled.")
+
+
+# Manual update checks should explain network/API errors (including GitHub
+# returning 404 before the first published release) rather than seem inert.
+replace_exact(
+    main_java_path,
+    '''\t\t\tif (err != null) {
+\t\t\t\tLog.e(err, "Failed to check updates");
+\t\t\t\treturn failed(err);''',
+    '''            if (err != null) {
+                Log.e(err, "Failed to check updates");
+                if (manual) App.get().run(() -> showAlert(this,
+                        getString(R.string.lumidrive_update_check_failed)));
+                return failed(err);''',
+)
+replace_exact(
+    main_java_path,
+    '''\t\t\t\t} catch (Exception ex) {
+\t\t\t\t\tLog.e(ex, "Failed to parse response");
+\t\t\t\t\treturn failed(ex);''',
+    '''                } catch (Exception ex) {
+                    Log.e(ex, "Failed to parse response");
+                    if (manual) App.get().run(() -> showAlert(this,
+                            getString(R.string.lumidrive_update_check_failed)));
+                    return failed(ex);''',
+)
+for locale, text_label in (
+    ("values", "Update check failed. Check your internet connection or whether a GitHub Release has been published."),
+    ("values-ru", "Не удалось проверить обновления. Проверь интернет и наличие опубликованного GitHub Release."),
+):
+    p = root / "fermata/src/main/res" / locale / "lumidrive_updates.xml"
+    current = p.read_text(encoding="utf-8")
+    addition = '    <string name="lumidrive_update_check_failed">' + text_label + '</string>\n'
+    if current.count("</resources>") != 1:
+        raise SystemExit("LumiDrive updates resources invalid")
+    updated = current.replace("</resources>", addition + "</resources>")
+    ET.fromstring(updated)
+    p.write_text(updated, encoding="utf-8")
+print("Manual LumiDrive update checks now report GitHub/network failure.")
