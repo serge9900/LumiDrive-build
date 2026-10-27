@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "280"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.6.0"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "281"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.6.1"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 280.
+- Package remains com.lumi.drive.auto; versionCode increased to 281.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -416,7 +416,7 @@ replace_exact(
 # the base strings.xml. The Russian translation previously displayed Fermata.
 about_en = """<H1 align="center">LumiDrive</H1>
         <p>LumiDrive brings IPTV, YouTube, web browsing and local media together.</p>
-        <p><b>Developer:</b> Serge Vardanyan</p>
+        <p><b>Developer:</b> Sergey Vardanyan</p>
         <p><b>Version:</b> %1$s (%2$d)</p>
         <p><b>Support:</b> <a href="https://app.binance.com/uni-qr/Jv3MYVZ8">Donate via Binance Pay</a> (User-92ef9)</p>
         <hr/>
@@ -425,7 +425,7 @@ about_en = """<H1 align="center">LumiDrive</H1>
         <a href="%3$s">Original source and license</a>.</small></p>"""
 about_ru = """<H1 align="center">LumiDrive</H1>
         <p>LumiDrive — медиаплеер с IPTV, YouTube, браузером и медиатекой.</p>
-        <p><b>Разработчик:</b> Serge Vardanyan</p>
+        <p><b>Разработчик:</b> Sergey Vardanyan</p>
         <p><b>Версия:</b> %1$s (%2$d)</p>
         <p><b>Поддержать:</b> <a href="https://app.binance.com/uni-qr/Jv3MYVZ8">Binance Pay</a> (User-92ef9)</p>
         <hr/>
@@ -1088,3 +1088,18 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Experimental preview v0.6.0 / versionCode 280.
 """, encoding="utf-8")
 print("LumiDrive Auto UI 1.0 home and car navigation enabled (v0.6.0).")
+
+# LumiDrive 0.6.1: Verify author's requested spelling for the user-facing About text.
+if about_en.count("Developer:</b> Sergey Vardanyan") != 1 or about_ru.count("Разработчик:</b> Sergey Vardanyan") != 1:
+    raise SystemExit("Expected developer name 'Sergey Vardanyan' in both About templates")
+if "Serge Vardanyan" in about_en or "Serge Vardanyan" in about_ru:
+    raise SystemExit("Outdated developer spelling must not appear in About")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.6.1 developer name correction
+- Developer/Разработчик in About is now spelled Sergey Vardanyan.
+- Applies to English, Russian and fallback About templates for other locales.
+- Previous media, UI, Mirror and Android Auto behavior is unchanged.
+- Version 0.6.1 / 281.
+""", encoding="utf-8")
+print("LumiDrive v0.6.1 developer credit corrected to Sergey Vardanyan.")
