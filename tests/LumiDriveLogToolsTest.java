@@ -18,6 +18,10 @@ public final class LumiDriveLogToolsTest {
                 "https://%malformed")), "Malformed URL was not concealed");
         check("password=[redacted]".equals(
                 LumiDriveLogTools.redact("password=abc123")), "Password key leaked");
+        String authorization = LumiDriveLogTools.redact(
+                "Authorization: Bearer verySecretSessionToken");
+        check(!authorization.contains("verySecretSessionToken"), "Bearer credential leaked");
+        check(authorization.contains("[redacted]"), "Authorization was not redacted");
 
         String entries = "[27-10-26 11:00:00][INFO][main][LumiDrive] Hello\n" +
                 "[27-10-26 11:00:01][ERROR][main][FermataWebClient] HTTP error\n" +
