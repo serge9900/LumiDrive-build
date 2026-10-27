@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "283"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.1"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "284"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.2"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 283.
+- Package remains com.lumi.drive.auto; versionCode increased to 284.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -1560,3 +1560,211 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - v0.7.1, versionCode 283; media/Android Auto behavior is unchanged.
 """, encoding="utf-8")
 print("LumiDrive v0.7.1 update-check and log-viewer fixes applied.")
+
+
+# LumiDrive 0.7.2 — central privacy-safe diagnostic logging.
+# The source remains a GPL-3.0 derivative of Fermata; the log formatter is
+# bundled as a simple Java utility in the shared utils library.
+diagnostics_src = Path(__file__).resolve().parent / "src" / "LumiDriveLogTools.java"
+diagnostics_dest = root / "depends/utils/src/main/java/me/aap/utils/log/LumiDriveLogTools.java"
+if not diagnostics_src.is_file() or not diagnostics_dest.parent.is_dir():
+    raise SystemExit("Missing LumiDrive log utility or upstream utils sources")
+diagnostics_dest.write_text(diagnostics_src.read_text(encoding="utf-8"), encoding="utf-8")
+
+android_logger_path = "depends/utils/src/main/java/me/aap/utils/log/AndroidLogger.java"
+# Android Logcat would otherwise expose a raw Throwable's exception message.
+# We format Throwable into redacted text ourselves, and only that sanitized
+# text is sent to both Logcat and the on-disk rotating log.
+for severity in ("d", "i", "w", "e"):
+    replace_exact(
+        android_logger_path,
+        f"android.util.Log.{severity}(tag, fileLog(msg, ex), ex);",
+        f"android.util.Log.{severity}(tag, fileLog(msg, ex));",
+    )
+replace_exact(
+    android_logger_path,
+    """\t\tString m = msg.toString();
+\t\tif (logFile == null) return m;""",
+    """        String m = LumiDriveLogTools.redact(msg.toString());
+        if (ex != null) {
+            java.io.StringWriter trace = new java.io.StringWriter();
+            ex.printStackTrace(new java.io.PrintWriter(trace));
+            m += "\\n" + LumiDriveLogTools.redact(trace.toString());
+        }
+        if (logFile == null) return m;""",
+)
+replace_exact(
+    android_logger_path,
+    "\t\t\tqueue = new Msg(m, ex, q);",
+    "\t\t\tqueue = new Msg(m, null, q);",
+)
+
+# Preserve older raw log history privately; redact when reading or exporting.
+# The actual share is a safe copy in the already-declared FileProvider cache
+# path (auto/res/xml/filepaths.xml: <cache-path path="updates/" />).
+settings_source = root / settings_path
+settings_java = settings_source.read_text(encoding="utf-8")
+start_marker = "\tprivate void openLog(MainActivityDelegate a) {"
+end_marker = "\n\tprivate final class AddonPrefsBuilder"
+open_pos = settings_java.find(start_marker)
+end_pos = settings_java.find(end_marker, open_pos)
+if open_pos < 0 or end_pos < 0 or settings_java.count(start_marker) != 1:
+    raise SystemExit("Existing Settings log viewer structure changed")
+new_log_viewer = """\tprivate void openLog(MainActivityDelegate a) {
+        // Choose what to inspect; retain full exception stack lines.
+        String[] filters = {
+                getString(R.string.lumidrive_filter_all),
+                getString(R.string.lumidrive_filter_error),
+                getString(R.string.lumidrive_filter_warn),
+                getString(R.string.lumidrive_filter_auto),
+                getString(R.string.lumidrive_filter_web),
+                getString(R.string.lumidrive_filter_iptv)
+        };
+        new androidx.appcompat.app.AlertDialog.Builder(a.getContext())
+                .setTitle(R.string.lumidrive_log_filter_title)
+                .setItems(filters, (dialog, which) -> showLumiDriveLog(a, which, filters[which]))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showLumiDriveLog(MainActivityDelegate a, int filter, String filterTitle) {
+        try {
+            File file = FermataApplication.get().getLogFile();
+            String all = me.aap.utils.log.LumiDriveLogTools.readTail(file, 512 * 1024);
+            String preview = me.aap.utils.log.LumiDriveLogTools.preview(all, filter);
+            final String visible = preview.isEmpty() ?
+                    getString(R.string.lumidrive_log_no_matches) : preview;
+            String title = "LumiDrive.log · " + filterTitle;
+
+            android.widget.TextView text = new android.widget.TextView(a.getContext());
+            float density = getResources().getDisplayMetrics().density;
+            int pad = (int) (16f * density + 0.5f);
+            text.setPadding(pad, pad, pad, pad);
+            text.setTextSize(12f);
+            text.setTypeface(android.graphics.Typeface.MONOSPACE);
+            text.setTextIsSelectable(true);
+            text.setText(me.aap.utils.log.LumiDriveLogTools.summary(all)
+                    + "\\n\\n" + visible);
+            android.widget.ScrollView scroll =
+                    new android.widget.ScrollView(a.getContext());
+            scroll.setFillViewport(false);
+            scroll.addView(text);
+
+            new androidx.appcompat.app.AlertDialog.Builder(a.getContext())
+                    .setTitle(title)
+                    .setView(scroll)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .setNeutralButton(R.string.lumidrive_copy_log, (dialog, which) -> {
+                        android.content.ClipboardManager clip =
+                                (android.content.ClipboardManager) a.getContext()
+                                        .getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (clip != null) clip.setPrimaryClip(
+                                android.content.ClipData.newPlainText(
+                                        "LumiDrive.log", visible));
+                    })
+                    .setNegativeButton(R.string.lumidrive_share_log,
+                            (dialog, which) -> shareLumiDriveLog(a))
+                    .show();
+        } catch (Exception err) {
+            Log.e(err, "Failed to view LumiDrive diagnostics");
+            showAlert(a.getContext(), err.getLocalizedMessage());
+        }
+    }
+
+    private void shareLumiDriveLog(MainActivityDelegate a) {
+        try {
+            FermataApplication app = FermataApplication.get();
+            File original = app.getLogFile();
+            if (!original.isFile()) {
+                showAlert(a.getContext(), getString(R.string.lumidrive_log_empty));
+                return;
+            }
+
+            String raw = me.aap.utils.log.LumiDriveLogTools.readTail(original, 1024 * 1024);
+            String safe = me.aap.utils.log.LumiDriveLogTools.redact(raw);
+            File dir = new File(app.getCacheDir(), "updates");
+            if (!dir.isDirectory() && !dir.mkdirs()) {
+                throw new java.io.IOException("Cannot create diagnostics export directory");
+            }
+            // Never share original: even old v0.7.1 entries may contain tokens.
+            File file = new File(dir, "LumiDrive.log");
+            try (java.io.OutputStreamWriter output =
+                         new java.io.OutputStreamWriter(
+                                 new java.io.FileOutputStream(file, false), UTF_8)) {
+                output.write("# LumiDrive diagnostic log (private URLs masked)\\n");
+                output.write(safe);
+            }
+
+            Uri uri = (SDK_INT >= Build.VERSION_CODES.N)
+                    ? FileProvider.getUriForFile(
+                            app, app.getPackageName() + ".FileProvider", file)
+                    : Uri.fromFile(file);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            a.startActivity(Intent.createChooser(intent,
+                    getString(R.string.lumidrive_share_log)));
+        } catch (Exception err) {
+            Log.e(err, "Failed to share LumiDrive diagnostics");
+            showAlert(a.getContext(), err.getLocalizedMessage());
+        }
+    }
+"""
+settings_java = settings_java[:open_pos] + new_log_viewer + settings_java[end_pos:]
+settings_source.write_text(settings_java, encoding="utf-8")
+
+for locale, values in (
+    ("values", (
+        "Log categories", "All", "Errors", "Warnings", "Android Auto / media",
+        "Web browser", "IPTV / player", "Copy", "No entries for this category."
+    )),
+    ("values-ru", (
+        "Категории журнала", "Все", "Ошибки", "Предупреждения",
+        "Android Auto / медиа", "Браузер", "IPTV / плеер",
+        "Копировать", "В этой категории записей нет."
+    ))
+):
+    names = (
+        "lumidrive_log_filter_title", "lumidrive_filter_all",
+        "lumidrive_filter_error", "lumidrive_filter_warn",
+        "lumidrive_filter_auto", "lumidrive_filter_web",
+        "lumidrive_filter_iptv", "lumidrive_copy_log",
+        "lumidrive_log_no_matches",
+    )
+    p = root / "fermata/src/main/res" / locale / "lumidrive_updates.xml"
+    xml = p.read_text(encoding="utf-8")
+    if xml.count("</resources>") != 1:
+        raise SystemExit(f"Invalid diagnostics resource: {locale}")
+    additions = "".join(
+        f'    <string name="{key}">{value}</string>\\n'
+        for key, value in zip(names, values)
+    )
+    xml = xml.replace("</resources>", additions + "</resources>")
+    ET.fromstring(xml)
+    p.write_text(xml, encoding="utf-8")
+
+logger_text = (root / android_logger_path).read_text(encoding="utf-8")
+if logger_text.count("LumiDriveLogTools.redact(") != 2:
+    raise SystemExit("Privacy filter missing from file logger")
+if "fileLog(msg, ex), ex" in logger_text:
+    raise SystemExit("Raw exception leak to Logcat is still possible")
+if "new Msg(m, null, q)" not in logger_text:
+    raise SystemExit("Raw exception leak to file is still possible")
+if settings_java.count('new File(dir, "LumiDrive.log")') != 1:
+    raise SystemExit("Missing sanitized LumiDrive.log share file")
+if "LumiDriveLogTools.preview(all, filter)" not in settings_java:
+    raise SystemExit("Log viewer filtering was not installed")
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.2 privacy-safe diagnostics
+- Redact URL paths, token-bearing URL queries, credentials and common secret
+  fields in the central rotating file log and Android Logcat output.
+- Redact exception stack traces before recording; preserve stack frames.
+- Always redact legacy v0.7.1 log entries again when viewing or sharing.
+- Add an in-app six-category log viewer and Copy filtered entries action.
+- Share a sanitized LumiDrive.log snapshot through existing FileProvider cache,
+  never the potentially sensitive live/legacy log file.
+- Bounded log preview and share size to avoid freezing large historical logs.
+- Version 0.7.2 / 284.
+""", encoding="utf-8")
+print("LumiDrive 0.7.2 privacy-safe diagnostic logger and filter viewer applied.")
