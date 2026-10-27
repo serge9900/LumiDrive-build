@@ -2142,8 +2142,8 @@ print("LumiDrive 0.7.4 updater discovery hardening and diagnostics applied.")
 # LumiDrive 0.7.5 — version-only release for the 0.7.4 updater regression test.
 # No changes to media, diagnostics, Android Auto or updater source behavior.
 actual_versions = (root / "gradle/libs.versions.toml").read_text(encoding="utf-8")
-if 'appVersionCode = "287"' not in actual_versions or 'appVersionName = "0.7.5"' not in actual_versions:
-    raise SystemExit("LumiDrive 0.7.5 / 287 version bump was not applied")
+if 'appVersionCode = "288"' not in actual_versions or 'appVersionName = "0.7.6"' not in actual_versions:
+    raise SystemExit("LumiDrive 0.7.6 / 288 version bump was not applied")
 changes.write_text(changes.read_text(encoding="utf-8") + """
 ## v0.7.5 update-discovery test release
 - Version-only update from v0.7.4 to v0.7.5.
@@ -2152,7 +2152,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - No changes to playback, Android Auto, settings, diagnostics or code paths.
 - Version 0.7.5 / versionCode 287; application ID unchanged.
 """, encoding="utf-8")
-print("LumiDrive 0.7.5 version-only release test ready.")
+print("LumiDrive 0.7.5 release-test baseline applied for 0.7.6 update-icon preview.")
 
 
 # LumiDrive v0.7.6: use the actual LumiDrive brand mark in the "new update"
