@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "287"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.5"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "288"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.6"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 287.
+- Package remains com.lumi.drive.auto; versionCode increased to 288.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -2153,3 +2153,55 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.7.5 / versionCode 287; application ID unchanged.
 """, encoding="utf-8")
 print("LumiDrive 0.7.5 version-only release test ready.")
+
+
+# LumiDrive v0.7.6: use the actual LumiDrive brand mark in the "new update"
+# confirmation dialog, instead of Fermata's small R.drawable.notification
+# icon. This is an icon-only UI fix: release selection, download URL,
+# checksum verification, Android installer and player are left untouched.
+write_xml("fermata/src/main/res/drawable/lumidrive_update_icon.xml", """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#AE8AFF"
+        android:pathData="M54,6 C81,6 102,27 102,54 C102,81 81,102 54,102 C27,102 6,81 6,54 C6,27 27,6 54,6 Z"/>
+    <path android:fillColor="#27153D"
+        android:pathData="M54,14 C76,14 94,32 94,54 C94,76 76,94 54,94 C32,94 14,76 14,54 C14,32 32,14 54,14 Z"/>
+    <path android:fillColor="#8FE7FF"
+        android:pathData="M31,30 L43,30 L43,68 L57,68 L57,79 L31,79 Z"/>
+    <path android:fillColor="#FF7AC8"
+        android:pathData="M57,33 L82,54 L57,75 Z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M33,32 L39,32 L39,38 L33,38 Z"/>
+</vector>
+""")
+
+update_main_path = "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java"
+replace_exact(
+    update_main_path,
+    "AppCompatResources.getDrawable(getContext(), R.drawable.notification))",
+    "AppCompatResources.getDrawable(getContext(), R.drawable.lumidrive_update_icon))",
+)
+
+update_main = (root / update_main_path).read_text(encoding="utf-8")
+if update_main.count("AppCompatResources.getDrawable(getContext(), R.drawable.lumidrive_update_icon))") != 1:
+    raise SystemExit("LumiDrive confirmation dialog did not receive our branded icon")
+if update_main.count("lumiDriveDigestMatches(f, sha256.substring(7))") != 1:
+    raise SystemExit("Release integrity verification must not change")
+if update_main.count("lumiDriveCompareVersions(BuildConfig.VERSION_NAME, version)") != 1:
+    raise SystemExit("Version comparison must not change")
+if update_main.count("LumiDrive-build/releases?per_page=20&check=") != 1:
+    raise SystemExit("GitHub release query must remain unchanged")
+new_icon = root / "fermata/src/main/res/drawable/lumidrive_update_icon.xml"
+ET.parse(new_icon)
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.6 branded update confirmation icon
+- Replace the upstream Fermata notification/play icon in the "Update available"
+  confirmation dialog with a 48dp LumiDrive logo matching our purple,
+  cyan and magenta icon colors.
+- Keep the GitHub Release updater, verification, Android installer, media
+  playback and Android Auto functionality unchanged.
+- Version 0.7.6 / versionCode 288; experimental APK build only.
+""", encoding="utf-8")
+print("LumiDrive 0.7.6 update prompt branded icon applied.")
