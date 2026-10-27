@@ -1816,24 +1816,16 @@ replace_exact(
 )
 replace_exact(
     callback_path,
-    """        }
-        playerTask.cancel();
-        playerTask = play();""",
-    """        }
-        Log.i("[LumiDrive][MEDIA] MediaSession Play; carActive=",
+    "\t\tplayerTask = play();",
+    """        Log.i("[LumiDrive][MEDIA] MediaSession Play; carActive=",
                 FermataApplication.get().isConnectedToAuto(),
                 ", explicitCarPlay=", carPlaybackExplicitlyStarted);
-        playerTask.cancel();
         playerTask = play();""",
 )
 replace_exact(
     callback_path,
-    """        allowExplicitCarPlayback();
-        playerTask.cancel();
-        playerTask = playFromMediaId(mediaId, extras);""",
-    """        allowExplicitCarPlayback();
-        Log.i("[LumiDrive][MEDIA] media item selected explicitly");
-        playerTask.cancel();
+    "\t\tplayerTask = playFromMediaId(mediaId, extras);",
+    """        Log.i("[LumiDrive][MEDIA] media item selected explicitly");
         playerTask = playFromMediaId(mediaId, extras);""",
 )
 replace_exact(
