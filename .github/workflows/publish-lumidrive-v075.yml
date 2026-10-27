@@ -1,0 +1,101 @@
+name: Publish LumiDrive v0.7.5 Test Release
+
+on:
+  push:
+    branches:
+      - lumidrive-v0.7.5-release-test
+    paths:
+      - .github/workflows/publish-lumidrive-v075.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish verified v0.7.5 APK from successful Actions build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v4
+
+      - name: Download successfully built v0.7.5 APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download 40517917669 \
+            --repo serge9900/LumiDrive-build \
+            --name LumiDrive-v0.7.5-APK-arm64 \
+            --dir dist
+
+      - name: Check new APK cryptographic hash and ZIP contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check dist/SHA256SUMS.txt
+          unzip -tqq dist/LumiDrive-v0.7.5-arm64.apk
+          test -s dist/LumiDrive-v0.7.5-arm64.apk
+          echo 'v0.7.5 SHA256 and ZIP validated.'
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;35.0.0'
+
+      - name: Verify identity and signature for in-place upgrade from 0.7.4
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk='dist/LumiDrive-v0.7.5-arm64.apk'
+          tools_dir="$ANDROID_HOME/build-tools/35.0.0"
+          "$tools_dir/aapt" dump badging "$apk" > "$RUNNER_TEMP/apk-badging.txt"
+          head -n 4 "$RUNNER_TEMP/apk-badging.txt"
+          grep -F "name='com.lumi.drive.auto'" "$RUNNER_TEMP/apk-badging.txt"
+          grep -F "versionCode='287'" "$RUNNER_TEMP/apk-badging.txt"
+          grep -F "versionName='0.7.5'" "$RUNNER_TEMP/apk-badging.txt"
+          mkdir -p "$RUNNER_TEMP/previous"
+          gh run download 40514878881 \
+            --repo serge9900/LumiDrive-build \
+            --name LumiDrive-v0.7.4-APK-arm64 \
+            --dir "$RUNNER_TEMP/previous"
+          ( cd "$RUNNER_TEMP/previous" && sed 's#  dist/#  #' SHA256SUMS.txt | sha256sum --check - )
+          old_apk="$RUNNER_TEMP/previous/LumiDrive-v0.7.4-arm64.apk"
+          test -s "$old_apk"
+          signer="$tools_dir/apksigner"
+          old_cert=$("$signer" verify --print-certs "$old_apk" | grep -i 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')
+          new_cert=$("$signer" verify --print-certs "$apk" | grep -i 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')
+          test -n "$old_cert" && test -n "$new_cert"
+          if [[ "$old_cert" != "$new_cert" ]]; then
+            echo 'APK signing mismatch with v0.7.4; cannot upgrade safely.' >&2
+            exit 1
+          fi
+          echo 'Installed package and signing certificate match v0.7.4.'
+
+      - name: Publish normal (not prerelease) GitHub Release v0.7.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v0.7.5 --repo serge9900/LumiDrive-build >/dev/null 2>&1; then
+            echo 'Release v0.7.5 already exists; will not overwrite.'
+            exit 0
+          fi
+          gh release create v0.7.5 \
+            dist/LumiDrive-v0.7.5-arm64.apk dist/SHA256SUMS.txt \
+            --repo serge9900/LumiDrive-build \
+            --target "$GITHUB_SHA" \
+            --title 'LumiDrive v0.7.5 — updater detection test' \
+            --notes-file release-notes/v0.7.5.md \
+            --latest
+          gh release view v0.7.5 --repo serge9900/LumiDrive-build --json tagName,isPrerelease,assets \
+            --jq '{tag: .tagName, prerelease: .isPrerelease, assets: [.assets[].name]}'
