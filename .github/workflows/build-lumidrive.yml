@@ -157,7 +157,8 @@ jobs:
           set -euo pipefail
           apk='dist/LumiDrive-v0.7.5-arm64.apk'
           tools_dir="$ANDROID_HOME/build-tools/35.0.0"
-          "$tools_dir/aapt" dump badging "$apk" | tee /tmp/lumidrive-manifest.txt | head -n 4
+          "$tools_dir/aapt" dump badging "$apk" > /tmp/lumidrive-manifest.txt
+          head -n 4 /tmp/lumidrive-manifest.txt
           grep -F "name='com.lumi.drive.auto'" /tmp/lumidrive-manifest.txt
           grep -F "versionCode='287'" /tmp/lumidrive-manifest.txt
           grep -F "versionName='0.7.5'" /tmp/lumidrive-manifest.txt
@@ -166,8 +167,7 @@ jobs:
             --repo serge9900/LumiDrive-build \
             --name LumiDrive-v0.7.4-APK-arm64 \
             --dir "$RUNNER_TEMP/previous"
-          sha256sum --check "$RUNNER_TEMP/previous/SHA256SUMS.txt" \
-            --ignore-missing || true
+          ( cd "$RUNNER_TEMP/previous" && sha256sum --check SHA256SUMS.txt )
           old_apk="$RUNNER_TEMP/previous/LumiDrive-v0.7.4-arm64.apk"
           test -s "$old_apk"
           signer="$tools_dir/apksigner"
