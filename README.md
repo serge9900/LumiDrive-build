@@ -127,6 +127,13 @@ LumiDrive пока не является стабильным релизом. Н
 
 ---
 
+
+### 🛡️ Diagnostics / Диагностика
+
+- **Privacy-safe logs / Защита данных:** LumiDrive masks URLs and typical access tokens before writing logs; legacy log content is sanitized again when viewed or shared.
+- **In-app viewer / Просмотр:** Settings → Other → View LumiDrive log provides filters (all, errors, warnings, Android Auto/media, web, IPTV), Copy and Share.
+- **Better troubleshooting / Удобная отладка:** extra Android Auto connection and playback events, plus summarized/deduplicated browser errors. Device-specific testing is still needed.
+
 ## ⚖️ Open source & credits · Исходный код и авторство
 
 **LumiDrive UI and modifications / Интерфейс и изменения LumiDrive:** [Sergey Vardanyan](https://github.com/serge9900).
