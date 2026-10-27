@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "284"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.2"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "285"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.3"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 284.
+- Package remains com.lumi.drive.auto; versionCode increased to 285.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -1949,3 +1949,57 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - The rest of the player, navigation and update flows remain unchanged.
 """, encoding="utf-8")
 print("LumiDrive 0.7.2 categorized Auto, Web and playback event logs applied.")
+
+
+# LumiDrive 0.7.3: the upstream dark theme can render AppCompat
+# AlertDialog action labels nearly black on a purple dialog surface.
+# Do not change the update request/installation logic. Color only the
+# two action buttons in the existing "no published updates" dialog.
+update_dialog_path = "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java"
+replace_exact(
+    update_dialog_path,
+    '''                        new androidx.appcompat.app.AlertDialog.Builder(this)
+                                .setTitle(R.string.update)
+                                .setMessage(R.string.lumidrive_no_update)
+                                .setPositiveButton(android.R.string.ok, null)
+                                .setNeutralButton(R.string.lumidrive_open_builds,
+                                        (dialog, which) -> startActivity(new Intent(
+                                                Intent.ACTION_VIEW,
+                                                Uri.parse("https://github.com/serge9900/LumiDrive-build/actions"))))
+                                .show();''',
+    '''                        androidx.appcompat.app.AlertDialog updateDialog =
+                                new androidx.appcompat.app.AlertDialog.Builder(this)
+                                        .setTitle(R.string.update)
+                                        .setMessage(R.string.lumidrive_no_update)
+                                        .setPositiveButton(android.R.string.ok, null)
+                                        .setNeutralButton(R.string.lumidrive_open_builds,
+                                                (dialog, which) -> startActivity(new Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse("https://github.com/serge9900/LumiDrive-build/actions"))))
+                                        .create();
+                        updateDialog.setOnShowListener(ignored -> {
+                            int readableColor = android.graphics.Color.rgb(157, 225, 255);
+                            updateDialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
+                                    .setTextColor(readableColor);
+                            updateDialog.getButton(android.content.DialogInterface.BUTTON_NEUTRAL)
+                                    .setTextColor(readableColor);
+                        });
+                        updateDialog.show();''',
+)
+patched_java = (root / update_dialog_path).read_text(encoding="utf-8")
+if patched_java.count("updateDialog.setOnShowListener") != 1:
+    raise SystemExit("Update dialog contrast patch missing")
+if patched_java.count("LumiDrive-build/releases?per_page=20") != 1:
+    raise SystemExit("Update-checker source changed unexpectedly")
+if patched_java.count("lumiDriveDigestMatches(f, sha256.substring(7))") != 1:
+    raise SystemExit("Update integrity guard was changed")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.3 update dialog contrast
+- Use high-contrast light cyan labels for the OK and Open APK Builds
+  buttons inside the dark-purple "no new published release" dialog.
+- Preserve the update URL, explicit user confirmation, and SHA-256
+  verification; no player behavior changes.
+- Version 0.7.3 / versionCode 285.
+""", encoding="utf-8")
+print("LumiDrive 0.7.3 high-contrast update dialog applied.")
