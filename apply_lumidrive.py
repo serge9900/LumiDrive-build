@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "286"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.4"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "287"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.5"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 286.
+- Package remains com.lumi.drive.auto; versionCode increased to 287.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -2138,3 +2138,18 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - v0.7.4 / versionCode 286.
 """, encoding="utf-8")
 print("LumiDrive 0.7.4 updater discovery hardening and diagnostics applied.")
+
+# LumiDrive 0.7.5 — version-only release for the 0.7.4 updater regression test.
+# No changes to media, diagnostics, Android Auto or updater source behavior.
+actual_versions = (root / "gradle/libs.versions.toml").read_text(encoding="utf-8")
+if 'appVersionCode = "287"' not in actual_versions or 'appVersionName = "0.7.5"' not in actual_versions:
+    raise SystemExit("LumiDrive 0.7.5 / 287 version bump was not applied")
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.5 update-discovery test release
+- Version-only update from v0.7.4 to v0.7.5.
+- Test that the existing v0.7.4 in-app updater detects the next
+  public stable GitHub Release and displays the Android installer.
+- No changes to playback, Android Auto, settings, diagnostics or code paths.
+- Version 0.7.5 / versionCode 287; application ID unchanged.
+""", encoding="utf-8")
+print("LumiDrive 0.7.5 version-only release test ready.")
