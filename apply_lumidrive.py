@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "285"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.3"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "286"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.4"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 285.
+- Package remains com.lumi.drive.auto; versionCode increased to 286.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -2003,3 +2003,146 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.7.3 / versionCode 285.
 """, encoding="utf-8")
 print("LumiDrive 0.7.3 high-contrast update dialog applied.")
+
+
+# LumiDrive v0.7.4 — diagnose and harden the update lookup. Some v0.7.1 /
+# v0.7.2 devices reported "no update" despite a newer GitHub Release.
+# Retain our only-trusted-repository / exact-package / SHA256 checks.
+updater_java_path = "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java"
+updater_file = root / updater_java_path
+java = updater_file.read_text(encoding="utf-8")
+
+def update_exact(anchor, replacement):
+    global java
+    n = java.count(anchor)
+    if n != 1:
+        raise SystemExit(f"LumiDrive updater source changed: {n} matches for {anchor[:120]!r}")
+    java = java.replace(anchor, replacement)
+
+# A unique query stops an out-of-date cached release listing being reused
+# by HTTP intermediaries after a new GitHub Release is published.
+update_exact(
+    'String reqUrl = "https://api.github.com/repos/serge9900/LumiDrive-build/releases?per_page=20";',
+    '''String reqUrl = "https://api.github.com/repos/serge9900/LumiDrive-build/releases?per_page=20&check="
+                + System.currentTimeMillis();''',
+)
+update_exact(
+    '''JSONArray releases = new JSONArray(TextUtils.toString(p, UTF_8));
+                    JSONObject json = null;''',
+    '''JSONArray releases = new JSONArray(TextUtils.toString(p, UTF_8));
+                    Log.i("[LumiDrive][UPDATE] GitHub release entries: ", releases.length(),
+                            ", installed: ", BuildConfig.VERSION_NAME);
+                    JSONObject json = null;''',
+)
+update_exact(
+    'if (json == null) return completedNull();',
+    '''if (json == null) {
+                        Log.i("[LumiDrive][UPDATE] no published stable GitHub Releases");
+                        return completedNull();
+                    }''',
+)
+
+# A regex rejecting a valid GitHub tag was previously indistinguishable from
+# "no update". Match numeric x.y.z safely and surface invalid tags as errors.
+bad_tag_line = next(
+    (line for line in java.splitlines() if 'if (!tag.matches(' in line), None
+)
+if bad_tag_line is None:
+    raise SystemExit("LumiDrive update tag validator missing")
+update_exact(
+    bad_tag_line,
+    '''                    if (!tag.matches("v[0-9]+[.][0-9]+[.][0-9]+")) {''',
+)
+update_exact(
+    '''Log.w("Ignoring unrecognized LumiDrive release tag: ", tag);
+                        return completedNull();''',
+    '''Log.e("[LumiDrive][UPDATE] invalid release tag: ", tag);
+                        throw new org.json.JSONException("Unrecognized LumiDrive release tag: " + tag);''',
+)
+update_exact(
+    '''String version = tag.substring(1);
+                    String[] res = new String[3]; // version, APK URL, sha256 digest''',
+    '''String version = tag.substring(1);
+                    Log.i("[LumiDrive][UPDATE] comparing current ",
+                            BuildConfig.VERSION_NAME, " with release ", version);
+                    String[] res = new String[3]; // version, APK URL, sha256 digest''',
+)
+update_exact(
+    'if (NaturalOrderComparator.compareNatural(BuildConfig.VERSION_NAME, version) < 0) {',
+    'if (lumiDriveCompareVersions(BuildConfig.VERSION_NAME, version) < 0) {',
+)
+update_exact(
+    '''res[2] = asset.optString("digest", "");
+                            break;
+                        }
+
+                        return (res[1] != null) ? completed(res) : completedNull();''',
+    '''res[2] = asset.optString("digest", "");
+                            break;
+                        }
+
+                        if (res[1] == null) {
+                            Log.e("[LumiDrive][UPDATE] published release has no matching APK: ",
+                                    expectedName);
+                            throw new org.json.JSONException(
+                                    "Missing signed LumiDrive APK asset: " + expectedName);
+                        }
+                        Log.i("[LumiDrive][UPDATE] newer APK found: ", expectedName);
+                        return completed(res);''',
+)
+update_exact(
+    '''Log.i("The latest release version - ", res[0], ". Application is up to date");''',
+    '''Log.i("[LumiDrive][UPDATE] installed version is current: ",
+                            BuildConfig.VERSION_NAME, ", latest=", res[0]);''',
+)
+update_exact(
+    '''    private static boolean lumiDriveDigestMatches(File file, String expected)
+            throws Exception {''',
+    '''    // Compare numeric release components, not lexical strings.
+    // Fallback preserves handling for potential non-numeric dev versions.
+    private static int lumiDriveCompareVersions(String installed, String latest) {
+        if (!installed.matches("[0-9]+[.][0-9]+[.][0-9]+")
+                || !latest.matches("[0-9]+[.][0-9]+[.][0-9]+")) {
+            return NaturalOrderComparator.compareNatural(installed, latest);
+        }
+        String[] a = installed.split("[.]");
+        String[] b = latest.split("[.]");
+        for (int i = 0; i < 3; i++) {
+            int left = Integer.parseInt(a[i]);
+            int right = Integer.parseInt(b[i]);
+            if (left != right) return Integer.compare(left, right);
+        }
+        return 0;
+    }
+
+    private static boolean lumiDriveDigestMatches(File file, String expected)
+            throws Exception {''',
+)
+updater_file.write_text(java, encoding="utf-8")
+
+# Enforce correct responses and don't regress installation integrity.
+if java.count("lumiDriveCompareVersions(BuildConfig.VERSION_NAME, version)") != 1:
+    raise SystemExit("Updater semantic version comparison missing")
+if java.count("lumiDriveDigestMatches(f, sha256.substring(7))") != 1:
+    raise SystemExit("SECURITY: update SHA256 guard missing")
+if java.count('if (!"com.lumi.drive.auto".equals(getPackageName())) return;') != 1:
+    raise SystemExit("SECURITY: package-id update restriction missing")
+if java.count("LumiDrive-build/releases?per_page=20&check=") != 1:
+    raise SystemExit("Cache-busting GitHub release fetch missing")
+if java.count('new JSONArray(TextUtils.toString(p, UTF_8))') != 1:
+    raise SystemExit("Update parser no longer expects release list")
+if java.count("newer APK found: ") != 1:
+    raise SystemExit("Updater version/asset diagnostics missing")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.4 update-discovery reliability
+- Cache-bust GitHub's releases listing for an explicit fresh check.
+- Compare numeric X.Y.Z versions component-wise, avoiding natural-string ambiguity.
+- Accept version tags vX.Y.Z using character-class literal dots.
+- Log current version, published version, number of releases and matching APK name.
+- An invalid tag or missing matching APK is now an error, not 'no updates'.
+- Preserve strict package ID, official release asset URL and SHA-256 checks.
+- This update cannot retroactively fix 0.7.2: install a newer APK manually once.
+- v0.7.4 / versionCode 286.
+""", encoding="utf-8")
+print("LumiDrive 0.7.4 updater discovery hardening and diagnostics applied.")
