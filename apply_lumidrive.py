@@ -1928,7 +1928,7 @@ for file_path, fragments in (
         "[LumiDrive][MEDIA] MediaSession Play",
         "[LumiDrive][PLAYBACK] engine started:"
     )),
-    (web_client, ("[LumiDrive][WEB] main-page failure", "lastLumiWebErrorAt")),
+    (web_client, ("[LumiDrive][WEB] main-page failure", "private long lastLumiWebErrorAt;")),
     (car_service_path, ("[LumiDrive][AUTO] CarService created",)),
 ):
     result = (root / file_path).read_text(encoding="utf-8")
