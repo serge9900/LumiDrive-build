@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "282"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.0"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "283"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.1"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 282.
+- Package remains com.lumi.drive.auto; versionCode increased to 283.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -1344,3 +1344,218 @@ for locale, text_label in (
     ET.fromstring(updated)
     p.write_text(updated, encoding="utf-8")
 print("Manual LumiDrive update checks now report GitHub/network failure.")
+
+
+# LumiDrive v0.7.1 — published-release lookup and native log viewer.
+# GitHub returns HTTP 404 for /releases/latest until a Release exists. Listing
+# /releases returns HTTP 200 with [] instead. Preserve the vetted v0.7.0
+# release APK filename, package name, SHA-256 verification, and installer.
+replace_exact(
+    main_java_path,
+    'String reqUrl = "https://api.github.com/repos/serge9900/LumiDrive-build/releases/latest";',
+    'String reqUrl = "https://api.github.com/repos/serge9900/LumiDrive-build/releases?per_page=20";',
+)
+replace_exact(
+    main_java_path,
+    'JSONObject json = new JSONObject(TextUtils.toString(p, UTF_8));',
+    '''JSONArray releases = new JSONArray(TextUtils.toString(p, UTF_8));
+                    JSONObject json = null;
+                    for (int n = 0; n < releases.length(); n++) {
+                        JSONObject candidate = releases.getJSONObject(n);
+                        if (candidate.optBoolean("draft") || candidate.optBoolean("prerelease"))
+                            continue;
+                        json = candidate;
+                        break;
+                    }
+                    // No published stable Release is normal, not a network error.
+                    if (json == null) return completedNull();''',
+)
+replace_exact(
+    main_java_path,
+    'if (manual) showAlert(this, getString(R.string.lumidrive_no_update));',
+    '''if (manual) {
+                        new androidx.appcompat.app.AlertDialog.Builder(this)
+                                .setTitle(R.string.update)
+                                .setMessage(R.string.lumidrive_no_update)
+                                .setPositiveButton(android.R.string.ok, null)
+                                .setNeutralButton(R.string.lumidrive_open_builds,
+                                        (dialog, which) -> startActivity(new Intent(
+                                                Intent.ACTION_VIEW,
+                                                Uri.parse("https://github.com/serge9900/LumiDrive-build/actions"))))
+                                .show();
+                    }''',
+)
+# New log filename is returned to AndroidLogger and the share FileProvider, so
+# it also updates the share-sheet name. Migrate old history on first run.
+application_path = "fermata/src/main/java/me/aap/fermata/FermataApplication.java"
+replace_exact(
+    application_path,
+    'return new File(dir, "Fermata.log");',
+    '''File lumiLog = new File(dir, "LumiDrive.log");
+        File oldLog = new File(dir, "Fermata.log");
+        if (!lumiLog.exists() && oldLog.isFile()) {
+            // Best effort: preserve log history from earlier LumiDrive builds.
+            if (!oldLog.renameTo(lumiLog)) {
+                Log.w("Could not rename old Fermata.log to LumiDrive.log");
+            }
+        }
+        return lumiLog;''',
+)
+# Previous "Open log" only opened an ACTION_SEND share chooser. A user wanting
+# to VIEW the logs should be able to inspect them in LumiDrive first, and share
+# the correct LumiDrive.log filename if troubleshooting requires it.
+replace_exact(
+    settings_path,
+    '''\tprivate void openLog(MainActivityDelegate a) {
+\t\ttry {
+\t\t\tvar i = new Intent(Intent.ACTION_SEND);
+\t\t\tvar app = FermataApplication.get();
+\t\t\tvar f = app.getLogFile();
+\t\t\tUri u = (SDK_INT >= Build.VERSION_CODES.N) ?
+\t\t\t\t\tFileProvider.getUriForFile(app, app.getPackageName() + ".FileProvider", f) :
+\t\t\t\t\tUri.fromFile(f);
+\t\t\ti.setType("text/plain");
+\t\t\ti.putExtra(Intent.EXTRA_STREAM, u);
+\t\t\ta.startActivity(Intent.createChooser(i, app.getString(R.string.open_log)));
+\t\t} catch (Exception err) {
+\t\t\tLog.e(err);
+\t\t\tshowAlert(a.getContext(), err.getLocalizedMessage());
+\t\t}
+\t}''',
+    '''\tprivate void openLog(MainActivityDelegate a) {
+        try {
+            File file = FermataApplication.get().getLogFile();
+            String content;
+            if (!file.isFile() || file.length() == 0) {
+                content = getString(R.string.lumidrive_log_empty);
+            } else {
+                // Keep the viewer responsive even when the log is large.
+                int length = (int) Math.min(24000L, file.length());
+                byte[] bytes = new byte[length];
+                try (java.io.RandomAccessFile input =
+                             new java.io.RandomAccessFile(file, "r")) {
+                    input.seek(input.length() - length);
+                    input.readFully(bytes);
+                }
+                content = (file.length() > length
+                        ? getString(R.string.lumidrive_log_truncated) + "\\n\\n" : "")
+                        + new String(bytes, UTF_8);
+            }
+            a.createDialogBuilder()
+                    .setTitle("LumiDrive.log")
+                    .setMessage(content)
+                    .setNeutralButton(R.string.lumidrive_share_log,
+                            (dialog, which) -> shareLumiDriveLog(a))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+        } catch (Exception err) {
+            Log.e(err, "Failed to view LumiDrive log");
+            showAlert(a.getContext(), err.getLocalizedMessage());
+        }
+    }
+
+    private void shareLumiDriveLog(MainActivityDelegate a) {
+        try {
+            FermataApplication app = FermataApplication.get();
+            File file = app.getLogFile();
+            if (!file.isFile()) {
+                showAlert(a.getContext(), getString(R.string.lumidrive_log_empty));
+                return;
+            }
+            Uri uri = (SDK_INT >= Build.VERSION_CODES.N)
+                    ? FileProvider.getUriForFile(
+                            app, app.getPackageName() + ".FileProvider", file)
+                    : Uri.fromFile(file);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            a.startActivity(Intent.createChooser(intent,
+                    getString(R.string.lumidrive_share_log)));
+        } catch (Exception err) {
+            Log.e(err, "Failed to share LumiDrive log");
+            showAlert(a.getContext(), err.getLocalizedMessage());
+        }
+    }''',
+)
+# Use localized feedback. The absence of any releases is not a connection
+# failure, and the still-experimental APKs live under GitHub Actions.
+for locale, messages in (
+    ("values", {
+        "lumidrive_no_update": "No newer published LumiDrive release is available yet. Test APK builds are available on GitHub Actions.",
+        "lumidrive_update_check_failed": "Could not contact GitHub to check for updates. Please check your connection and try again."
+    }),
+    ("values-ru", {
+        "lumidrive_no_update": "Новых опубликованных релизов LumiDrive пока нет. Тестовые APK доступны в GitHub Actions.",
+        "lumidrive_update_check_failed": "Не удалось связаться с GitHub для проверки обновлений. Проверь интернет и попробуй снова."
+    })
+):
+    resources = root / "fermata/src/main/res" / locale / "lumidrive_updates.xml"
+    xml = resources.read_text(encoding="utf-8")
+    for string_name, label in messages.items():
+        xml, count = re.subn(
+            r'(<string name="' + re.escape(string_name) + r'">).*?(</string>)',
+            lambda m: m.group(1) + label + m.group(2),
+            xml,
+            count=1
+        )
+        if count != 1:
+            raise SystemExit(f"Missing existing update label: {locale}/{string_name}")
+    added = """    <string name="lumidrive_open_builds">Open APK builds</string>
+    <string name="lumidrive_log_empty">No log entries yet.</string>
+    <string name="lumidrive_log_truncated">Showing the latest 24 KB of the log.</string>
+    <string name="lumidrive_share_log">Share LumiDrive.log</string>
+""" if locale == "values" else """    <string name="lumidrive_open_builds">Открыть сборки APK</string>
+    <string name="lumidrive_log_empty">Записей в журнале пока нет.</string>
+    <string name="lumidrive_log_truncated">Показаны последние 24 КБ журнала.</string>
+    <string name="lumidrive_share_log">Поделиться LumiDrive.log</string>
+"""
+    if xml.count("</resources>") != 1: raise SystemExit("Invalid update resource file")
+    xml = xml.replace("</resources>", added + "</resources>")
+    ET.fromstring(xml)
+    resources.write_text(xml, encoding="utf-8")
+
+for locale, before, after in (
+    ("values", '<string name="open_log">Open log file</string>',
+               '<string name="open_log">View LumiDrive log</string>'),
+    ("values-ru", '<string name="open_log">Открыть лог файл</string>',
+                  '<string name="open_log">Просмотреть журнал LumiDrive</string>')
+):
+    xml_path = root / "fermata/src/main/res" / locale / "strings.xml"
+    xml = xml_path.read_text(encoding="utf-8")
+    if xml.count(before) != 1: raise SystemExit(f"Open-log label changed in {locale}")
+    xml = xml.replace(before, after)
+    ET.fromstring(xml)
+    xml_path.write_text(xml, encoding="utf-8")
+
+# Regression guards: original Auto playback/YouTube/IPTV code remains untouched;
+# the official Release APK security validation from 0.7.0 must stay in place.
+checked_main = (root / main_java_path).read_text(encoding="utf-8")
+if checked_main.count("LumiDrive-build/releases?per_page=20") != 1:
+    raise SystemExit("LumiDrive updates must use a 200-safe Releases listing")
+if "new JSONArray(TextUtils.toString(p, UTF_8))" not in checked_main:
+    raise SystemExit("Expected a GitHub Releases array response")
+if "lumiDriveDigestMatches(f, sha256.substring(7))" not in checked_main:
+    raise SystemExit("SECURITY: SHA-256 integrity verification was removed")
+if 'if (!"com.lumi.drive.auto".equals(getPackageName())) return;' not in checked_main:
+    raise SystemExit("SECURITY: Auto-package guard was removed")
+checked_app = (root / application_path).read_text(encoding="utf-8")
+if 'return lumiLog;' not in checked_app or '"LumiDrive.log"' not in checked_app:
+    raise SystemExit("Log rebranding failed")
+checked_settings = (root / settings_path).read_text(encoding="utf-8")
+if checked_settings.count("shareLumiDriveLog(a)") != 1:
+    raise SystemExit("In-app log viewer missing Share action")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.1 settings maintenance
+- GitHub Releases endpoint now uses the listing API; an empty response is
+  treated as no published update instead of GitHub HTTP 404/network failure.
+- Manual checks show a localized status dialog linking to experimental
+  GitHub Actions APK builds when no stable release is available.
+- Existing installer, package identity and SHA-256 validation are untouched.
+- App logs are named LumiDrive.log, migrating the previous Fermata.log.
+- The Settings "View log" action displays the latest 24 KB in an in-app dialog
+  and offers a separate Share LumiDrive.log option.
+- v0.7.1, versionCode 283; media/Android Auto behavior is unchanged.
+""", encoding="utf-8")
+print("LumiDrive v0.7.1 update-check and log-viewer fixes applied.")
