@@ -15,6 +15,7 @@ on:
       - lumidrive-v0.5.7-mirror-icons
       - lumidrive-v0.6.0-auto-home
       - lumidrive-v0.6.1-developer-name
+      - lumidrive-v0.7.0-updater
 
 permissions:
   contents: read
@@ -51,7 +52,7 @@ jobs:
           test -f upstream/LICENSE
           test -f upstream/fermata/build.gradle
 
-      - name: Apply LumiDrive v0.6.1 developer-name correction
+      - name: Apply LumiDrive v0.7.0 GitHub Releases updater
         run: |
           python3 -m py_compile apply_lumidrive.py
           python3 apply_lumidrive.py upstream
@@ -80,17 +81,17 @@ jobs:
             find upstream/fermata/build/outputs -type f -name '*.apk' -print || true
             exit 1
           fi
-          cp "${apks[0]}" dist/LumiDrive-v0.6.1-arm64.apk
-          unzip -tqq dist/LumiDrive-v0.6.1-arm64.apk
-          sha256sum dist/LumiDrive-v0.6.1-arm64.apk > dist/SHA256SUMS.txt
-          ls -lh dist/LumiDrive-v0.6.1-arm64.apk
+          cp "${apks[0]}" dist/LumiDrive-v0.7.0-arm64.apk
+          unzip -tqq dist/LumiDrive-v0.7.0-arm64.apk
+          sha256sum dist/LumiDrive-v0.7.0-arm64.apk > dist/SHA256SUMS.txt
+          ls -lh dist/LumiDrive-v0.7.0-arm64.apk
 
       - name: Upload test APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LumiDrive-v0.6.1-APK-arm64
+          name: LumiDrive-v0.7.0-APK-arm64
           path: |
-            dist/LumiDrive-v0.6.1-arm64.apk
+            dist/LumiDrive-v0.7.0-arm64.apk
             dist/SHA256SUMS.txt
           retention-days: 30
           if-no-files-found: error
