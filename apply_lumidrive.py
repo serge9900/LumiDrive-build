@@ -1768,3 +1768,192 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.7.2 / 284.
 """, encoding="utf-8")
 print("LumiDrive 0.7.2 privacy-safe diagnostic logger and filter viewer applied.")
+
+
+# LumiDrive v0.7.2 — high-signal, non-identifying event diagnostics.
+# No control flow or playback behavior is changed by the following log entries.
+replace_exact(
+    callback_path,
+    """    public void beginCarSessionWithoutAutoplay() {
+        if (!BuildConfig.AUTO) return;
+        carPlaybackExplicitlyStarted = false;""",
+    """    public void beginCarSessionWithoutAutoplay() {
+        if (!BuildConfig.AUTO) return;
+        Log.i("[LumiDrive][AUTO] car activity connected; suppressing auto-resume");
+        carPlaybackExplicitlyStarted = false;""",
+)
+replace_exact(
+    callback_path,
+    """    public void preventUnrequestedCarResume() {
+        if (!BuildConfig.AUTO || carPlaybackExplicitlyStarted) return;
+        blockAutomaticCarResume = true;""",
+    """    public void preventUnrequestedCarResume() {
+        if (!BuildConfig.AUTO || carPlaybackExplicitlyStarted) return;
+        Log.i("[LumiDrive][AUTO] media browser attached; auto-resume blocked");
+        blockAutomaticCarResume = true;""",
+)
+replace_exact(
+    callback_path,
+    """    public void allowExplicitCarPlayback() {
+        blockAutomaticCarResume = false;""",
+    """    public void allowExplicitCarPlayback() {
+        if (FermataApplication.get().isConnectedToAuto())
+            Log.i("[LumiDrive][AUTO] explicit media selection authorized");
+        blockAutomaticCarResume = false;""",
+)
+replace_exact(
+    callback_path,
+    """    public void endCarSession() {
+        blockAutomaticCarResume = false;""",
+    """    public void endCarSession() {
+        Log.i("[LumiDrive][AUTO] car media session ended");
+        blockAutomaticCarResume = false;""",
+)
+replace_exact(
+    callback_path,
+    'Log.i("LumiDrive: ignored unsolicited Android Auto Play request");',
+    'Log.i("[LumiDrive][AUTO] rejected unsolicited MediaSession Play command");',
+)
+replace_exact(
+    callback_path,
+    """        }
+        playerTask.cancel();
+        playerTask = play();""",
+    """        }
+        Log.i("[LumiDrive][MEDIA] MediaSession Play; carActive=",
+                FermataApplication.get().isConnectedToAuto(),
+                ", explicitCarPlay=", carPlaybackExplicitlyStarted);
+        playerTask.cancel();
+        playerTask = play();""",
+)
+replace_exact(
+    callback_path,
+    """        allowExplicitCarPlayback();
+        playerTask.cancel();
+        playerTask = playFromMediaId(mediaId, extras);""",
+    """        allowExplicitCarPlayback();
+        Log.i("[LumiDrive][MEDIA] media item selected explicitly");
+        playerTask.cancel();
+        playerTask = playFromMediaId(mediaId, extras);""",
+)
+replace_exact(
+    callback_path,
+    """\t\tif (e == null) return super.onMediaButtonEvent(mediaButtonEvent);
+\t\treturn handleKeyEvent(this, e, (i, ke) -> super.onMediaButtonEvent(mediaButtonEvent));""",
+    """        if (e == null) return super.onMediaButtonEvent(mediaButtonEvent);
+        if (e.getAction() == KeyEvent.ACTION_DOWN &&
+                e.getKeyCode() == KeyEvent.KEYCODE_MEDIA_PLAY) {
+            Log.i("[LumiDrive][MEDIA] physical/system MEDIA_PLAY key received; carActive=",
+                    FermataApplication.get().isConnectedToAuto());
+        }
+        return handleKeyEvent(this, e, (i, ke) -> super.onMediaButtonEvent(mediaButtonEvent));""",
+)
+replace_exact(
+    callback_path,
+    """\t\tLog.i("Start playing ", engine.getSource().getLocation(), " with ",
+\t\t\t\tengine.getClass().getSimpleName());""",
+    """        Log.i("[LumiDrive][PLAYBACK] engine started: ",
+                engine.getClass().getSimpleName(),
+                ", source-kind=",
+                (engine.getSource() instanceof StreamItem) ? "stream" : "local/media");
+        // The stream URL must never be logged, even by other components.""",
+)
+
+# Browser diagnostics: record only hostname, error code, top-level vs
+# subresource and a short reason. Never record full navigation URLs.
+# Deduplicate identical failures to keep the log useful and compact.
+web_file = root / web_client
+web_java = web_file.read_text(encoding="utf-8")
+web_marker = "\tBooleanConsumer loading;"
+if web_java.count(web_marker) != 1:
+    raise SystemExit("Expected one WebClient loading field")
+web_java = web_java.replace(web_marker,
+    web_marker + """
+    private String lastLumiWebError;
+    private long lastLumiWebErrorAt;
+""")
+web_start = web_java.find(
+    "\t\tif (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_RESOURCE_ERROR_GET_DESCRIPTION)) {")
+web_stop = web_java.find("\n\t\tsuper.onReceivedError(view, request, error);", web_start)
+if web_start < 0 or web_stop < 0:
+    raise SystemExit("Upstream WebView error handler changed")
+web_replacement = """        String host = request.getUrl().getHost();
+        if (host == null) host = "(unknown-host)";
+        String reason = WebViewFeature.isFeatureSupported(
+                WebViewFeature.WEB_RESOURCE_ERROR_GET_DESCRIPTION)
+                ? String.valueOf(error.getDescription()) : "unspecified";
+        boolean mainFrame = request.isForMainFrame();
+        String signature = host + "/" + error.getErrorCode() + "/" + mainFrame + "/" + reason;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (!signature.equals(lastLumiWebError) ||
+                now - lastLumiWebErrorAt > 60000L) {
+            lastLumiWebError = signature;
+            lastLumiWebErrorAt = now;
+            if (mainFrame) {
+                Log.e("[LumiDrive][WEB] main-page failure; host=", host,
+                        ", code=", error.getErrorCode(), ", reason=", reason);
+            } else {
+                Log.w("[LumiDrive][WEB] subresource failure; host=", host,
+                        ", code=", error.getErrorCode(), ", reason=", reason);
+            }
+        }
+"""
+web_java = web_java[:web_start] + web_replacement + web_java[web_stop:]
+web_file.write_text(web_java, encoding="utf-8")
+
+car_file = root / car_activity_path
+car_java = car_file.read_text(encoding="utf-8")
+if car_java.count("s.getMediaSessionCallback().beginCarSessionWithoutAutoplay();") != 1:
+    raise SystemExit("AA entry point changed before logging instrumentation")
+car_java = car_java.replace(
+    "s.getMediaSessionCallback().beginCarSessionWithoutAutoplay();",
+    'Log.i("[LumiDrive][AUTO] Android Auto screen opening");\n'
+    '\t\ts.getMediaSessionCallback().beginCarSessionWithoutAutoplay();'
+)
+car_file.write_text(car_java, encoding="utf-8")
+
+replace_exact(
+    car_service_path,
+    """\t\tLog.d("Creating CarService: " + this);
+\t\tsuper.onCreate();""",
+    """\t\tLog.i("[LumiDrive][AUTO] CarService created");
+        super.onCreate();""",
+)
+replace_exact(
+    car_service_path,
+    '\t\tLog.d("Destroying CarService: " + this);',
+    '\t\tLog.i("[LumiDrive][AUTO] CarService destroyed");',
+)
+replace_exact(
+    "fermata/src/auto/java/me/aap/fermata/auto/MediaServiceStarter.java",
+    'Log.i("Connected to bluetooth");',
+    'Log.i("[LumiDrive][MEDIA] Bluetooth connected; binding media service");',
+)
+
+for file_path, fragments in (
+    (callback_path, (
+        "[LumiDrive][AUTO] car activity connected",
+        "[LumiDrive][MEDIA] MediaSession Play",
+        "[LumiDrive][PLAYBACK] engine started:"
+    )),
+    (web_client, ("[LumiDrive][WEB] main-page failure", "lastLumiWebErrorAt")),
+    (car_service_path, ("[LumiDrive][AUTO] CarService created",)),
+):
+    result = (root / file_path).read_text(encoding="utf-8")
+    for frag in fragments:
+        if result.count(frag) != 1:
+            raise SystemExit(f"Diagnostics event missing/duplicated: {file_path}: {frag}")
+if "shouldStayOnYandexMapsWebsite(request.getUrl())" not in web_java:
+    raise SystemExit("Yandex Maps website handling was accidentally removed")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.2 categorized diagnostics
+- Add informative Android Auto lifecycle and MediaSession transport events.
+- Record whether Play came from media controls and whether AA's autoplay
+  suppression was active; do not infer the external physical caller.
+- Playback start logs show engine and source kind, never the original IPTV URL.
+- Browser logs identify host, primary document or subresource, and error code,
+  with deduplication of repeated identical errors over a 60-second window.
+- The rest of the player, navigation and update flows remain unchanged.
+""", encoding="utf-8")
+print("LumiDrive 0.7.2 categorized Auto, Web and playback event logs applied.")
