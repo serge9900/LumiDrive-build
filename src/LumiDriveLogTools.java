@@ -30,7 +30,7 @@ public final class LumiDriveLogTools {
             "(?i)(?<![a-z0-9_])(?:https?|rtsp|rtmp|udp)://[^\\s\\x22\\x27<>\\[\\]{}()]+");
     private static final Pattern SECRET = Pattern.compile(
             "(?i)\\b(password|passwd|token|api[_-]?key|authorization|secret|access[_-]?token)" +
-                    "\\s*[:=]\\s*[^\\s,;}&]+");
+                    "\\s*[:=]\\s*(?:(?:Bearer|Basic|Token)\\s+)?[^\\s,;}&]+");
     private static final Pattern HEADER = Pattern.compile(
             "^\\[\\d{2}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]\\[(DEBUG|INFO|WARN|ERROR)\\]");
 
