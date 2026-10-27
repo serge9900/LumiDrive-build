@@ -2072,16 +2072,8 @@ update_exact(
     'if (lumiDriveCompareVersions(BuildConfig.VERSION_NAME, version) < 0) {',
 )
 update_exact(
-    '''res[2] = asset.optString("digest", "");
-                            break;
-                        }
-
-                        return (res[1] != null) ? completed(res) : completedNull();''',
-    '''res[2] = asset.optString("digest", "");
-                            break;
-                        }
-
-                        if (res[1] == null) {
+    '\t\t\t\t\t\treturn (res[1] != null) ? completed(res) : completedNull();',
+    '''                        if (res[1] == null) {
                             Log.e("[LumiDrive][UPDATE] published release has no matching APK: ",
                                     expectedName);
                             throw new org.json.JSONException(
