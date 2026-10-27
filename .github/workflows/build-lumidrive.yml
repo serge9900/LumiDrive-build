@@ -20,6 +20,7 @@ on:
       - lumidrive-v0.7.2-diagnostics
       - lumidrive-v0.7.3-dialog-contrast
       - lumidrive-v0.7.4-updater-diagnostics
+      - lumidrive-v0.7.5-release-test
 
 permissions:
   contents: read
@@ -64,7 +65,7 @@ jobs:
           test -f upstream/LICENSE
           test -f upstream/fermata/build.gradle
 
-      - name: Apply LumiDrive v0.7.4 reliable release checker
+      - name: Apply LumiDrive v0.7.5 release test
         run: |
           python3 -m py_compile apply_lumidrive.py
           python3 apply_lumidrive.py upstream
@@ -93,17 +94,107 @@ jobs:
             find upstream/fermata/build/outputs -type f -name '*.apk' -print || true
             exit 1
           fi
-          cp "${apks[0]}" dist/LumiDrive-v0.7.4-arm64.apk
-          unzip -tqq dist/LumiDrive-v0.7.4-arm64.apk
-          sha256sum dist/LumiDrive-v0.7.4-arm64.apk > dist/SHA256SUMS.txt
-          ls -lh dist/LumiDrive-v0.7.4-arm64.apk
+          cp "${apks[0]}" dist/LumiDrive-v0.7.5-arm64.apk
+          unzip -tqq dist/LumiDrive-v0.7.5-arm64.apk
+          sha256sum dist/LumiDrive-v0.7.5-arm64.apk > dist/SHA256SUMS.txt
+          ls -lh dist/LumiDrive-v0.7.5-arm64.apk
 
       - name: Upload test APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LumiDrive-v0.7.4-APK-arm64
+          name: LumiDrive-v0.7.5-APK-arm64
           path: |
-            dist/LumiDrive-v0.7.4-arm64.apk
+            dist/LumiDrive-v0.7.5-arm64.apk
             dist/SHA256SUMS.txt
           retention-days: 30
           if-no-files-found: error
+
+  publish_release:
+    name: Publish v0.7.5 GitHub Release for updater test
+    needs: build
+    if: github.ref == 'refs/heads/lumidrive-v0.7.5-release-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v4
+
+      - name: Download tested v0.7.5 APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: LumiDrive-v0.7.5-APK-arm64
+          path: dist
+
+      - name: Validate artifact checksum and release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum --check SHA256SUMS.txt
+          unzip -tqq LumiDrive-v0.7.5-arm64.apk
+          test -s LumiDrive-v0.7.5-arm64.apk
+          echo 'Artifact ZIP and SHA-256 verified.'
+
+      - name: Set up Java and Android SDK for signature verification
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;35.0.0'
+
+      - name: Check package, version and 0.7.4-to-0.7.5 signing compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk='dist/LumiDrive-v0.7.5-arm64.apk'
+          tools_dir="$ANDROID_HOME/build-tools/35.0.0"
+          "$tools_dir/aapt" dump badging "$apk" | tee /tmp/lumidrive-manifest.txt | head -n 4
+          grep -F "name='com.lumi.drive.auto'" /tmp/lumidrive-manifest.txt
+          grep -F "versionCode='287'" /tmp/lumidrive-manifest.txt
+          grep -F "versionName='0.7.5'" /tmp/lumidrive-manifest.txt
+          mkdir -p "$RUNNER_TEMP/previous"
+          gh run download 40514878881 \
+            --repo serge9900/LumiDrive-build \
+            --name LumiDrive-v0.7.4-APK-arm64 \
+            --dir "$RUNNER_TEMP/previous"
+          sha256sum --check "$RUNNER_TEMP/previous/SHA256SUMS.txt" \
+            --ignore-missing || true
+          old_apk="$RUNNER_TEMP/previous/LumiDrive-v0.7.4-arm64.apk"
+          test -s "$old_apk"
+          signer="$tools_dir/apksigner"
+          old_cert=$("$signer" verify --print-certs "$old_apk" | grep -i 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')
+          new_cert=$("$signer" verify --print-certs "$apk" | grep -i 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')
+          test -n "$old_cert" && test -n "$new_cert"
+          if [[ "$old_cert" != "$new_cert" ]]; then
+            echo 'ERROR: 0.7.4 and 0.7.5 use different signing certificates.' >&2
+            echo 'Cannot safely offer an in-place update. Release cancelled.' >&2
+            exit 1
+          fi
+          echo 'APK package, version and signing compatibility verified.'
+
+      - name: Publish GitHub Release v0.7.5 with installable APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v0.7.5 --repo serge9900/LumiDrive-build >/dev/null 2>&1; then
+            echo 'v0.7.5 already exists. Refusing to overwrite release assets.'
+            exit 0
+          fi
+          gh release create v0.7.5 \
+            dist/LumiDrive-v0.7.5-arm64.apk dist/SHA256SUMS.txt \
+            --repo serge9900/LumiDrive-build \
+            --target "$GITHUB_SHA" \
+            --title 'LumiDrive v0.7.5 — updater test' \
+            --notes-file release-notes/v0.7.5.md \
+            --latest
+          gh release view v0.7.5 --repo serge9900/LumiDrive-build --json tagName,isPrerelease,assets \
+            --jq '{tag: .tagName, prerelease: .isPrerelease, apkNames: [.assets[].name]}'
