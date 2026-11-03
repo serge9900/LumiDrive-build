@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "289"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.7"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "290"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.8"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 289.
+- Package remains com.lumi.drive.auto; versionCode increased to 290.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -2142,8 +2142,8 @@ print("LumiDrive 0.7.4 updater discovery hardening and diagnostics applied.")
 # LumiDrive 0.7.5 — version-only release for the 0.7.4 updater regression test.
 # No changes to media, diagnostics, Android Auto or updater source behavior.
 actual_versions = (root / "gradle/libs.versions.toml").read_text(encoding="utf-8")
-if 'appVersionCode = "289"' not in actual_versions or 'appVersionName = "0.7.7"' not in actual_versions:
-    raise SystemExit("LumiDrive 0.7.7 / 289 version bump was not applied")
+if 'appVersionCode = "290"' not in actual_versions or 'appVersionName = "0.7.8"' not in actual_versions:
+    raise SystemExit("LumiDrive 0.7.8 / 290 version bump was not applied")
 changes.write_text(changes.read_text(encoding="utf-8") + """
 ## v0.7.5 update-discovery test release
 - Version-only update from v0.7.4 to v0.7.5.
@@ -2309,3 +2309,58 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
   playback logic unchanged. Version 0.7.7 / versionCode 289.
 """, encoding="utf-8")
 print("LumiDrive v0.7.7 browser and updater filename fixes applied.")
+
+
+# v0.7.8: The notification that shows "Downloading https://github.com..."
+# is created by Utils.createDownloader(), NOT the update-confirmation dialog.
+# Its original R.drawable.notification points at Fermata's icon. Use a
+# dedicated monochrome notification glyph (opaque white shapes with no
+# background) so Android can tint it properly on all status bar themes.
+write_xml("fermata/src/main/res/drawable/lumidrive_download_notification.xml", """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Bold white L and play triangle form the LumiDrive logo silhouette. -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M3,3 L8,3 L8,17 L13,17 L13,22 L3,22 Z"/>
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M13,4 L22,12 L13,20 Z"/>
+</vector>
+""")
+download_utils_path = "fermata/src/main/java/me/aap/fermata/util/Utils.java"
+replace_exact(
+    download_utils_path,
+    '\t\tl.setSmallIcon(R.drawable.notification);',
+    '\t\tl.setSmallIcon(R.drawable.lumidrive_download_notification);',
+)
+verify_downloader = (root / download_utils_path).read_text(encoding="utf-8")
+if verify_downloader.count("l.setSmallIcon(R.drawable.lumidrive_download_notification);") != 1:
+    raise SystemExit("LumiDrive downloader notification icon patch missing")
+if "l.setSmallIcon(R.drawable.notification);" in verify_downloader:
+    raise SystemExit("Old Fermata downloader icon still present")
+icon_file = root / "fermata/src/main/res/drawable/lumidrive_download_notification.xml"
+ET.parse(icon_file)
+if "android:fillColor=\"#FFFFFFFF\"" not in icon_file.read_text(encoding="utf-8"):
+    raise SystemExit("Notification small icon must use a tintable white glyph")
+
+# Release updater security and accepted APK filenames must remain unchanged.
+update_app = (root / "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java").read_text(encoding="utf-8")
+if update_app.count("lumiDriveDigestMatches(f, sha256.substring(7))") != 1:
+    raise SystemExit("SECURITY: update SHA-256 verification changed")
+if update_app.count("createTempFile(dir, releaseFileName, true)") != 1:
+    raise SystemExit("v0.7.7 update filename feature regressed")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.8 branded download progress notification
+- The progress notification created by Utils.createDownloader now uses a
+  dedicated 24dp monochrome LumiDrive L/play icon instead of Fermata.
+- Android colors notification small icons, so the vector remains white with
+  a transparent background rather than using a launcher/adaptive bitmap.
+- Prior branded update-dialog icon, app launcher, Google homepage and update
+  filename are unchanged. No modifications to download transport, signature,
+  release feed or player/Android Auto behavior.
+- v0.7.8 / versionCode 290.
+""", encoding="utf-8")
+print("LumiDrive v0.7.8 download progress icon replaced.")
