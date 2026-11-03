@@ -242,15 +242,22 @@ public final class LumiDriveDashboard {
         switch (index) {
             case 0: openAddon(activity, R.id.tv_fragment); break;
             case 1: openAddon(activity, R.id.youtube_fragment); break;
-            case 2: openAddon(activity, R.id.web_browser_fragment); break;
+            case 2: openAddon(activity, R.id.web_browser_fragment, "https://www.google.com/"); break;
             case 3: activity.showFragment(R.id.folders_fragment); break;
             default: break;
         }
     }
 
     private static void openAddon(MainActivityDelegate activity, int fragmentId) {
+        openAddon(activity, fragmentId, null);
+    }
+
+    private static void openAddon(MainActivityDelegate activity, int fragmentId, Object input) {
         if (AddonManager.get().hasAddon(fragmentId)) {
-            activity.showFragment(fragmentId);
+            // Pass Google's HTTPS URL only when the user taps the Browser
+            // card. Fragment.setInput loads it immediately or stores the URL
+            // until WebView initialization; normal browser links stay intact.
+            activity.showFragment(fragmentId, input);
         } else {
             new AlertDialog.Builder(activity.getContext())
                     .setMessage("Этот модуль недоступен в установленной сборке.")
