@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "288"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.6"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "289"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.7"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 288.
+- Package remains com.lumi.drive.auto; versionCode increased to 289.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -2142,8 +2142,8 @@ print("LumiDrive 0.7.4 updater discovery hardening and diagnostics applied.")
 # LumiDrive 0.7.5 — version-only release for the 0.7.4 updater regression test.
 # No changes to media, diagnostics, Android Auto or updater source behavior.
 actual_versions = (root / "gradle/libs.versions.toml").read_text(encoding="utf-8")
-if 'appVersionCode = "288"' not in actual_versions or 'appVersionName = "0.7.6"' not in actual_versions:
-    raise SystemExit("LumiDrive 0.7.6 / 288 version bump was not applied")
+if 'appVersionCode = "289"' not in actual_versions or 'appVersionName = "0.7.7"' not in actual_versions:
+    raise SystemExit("LumiDrive 0.7.7 / 289 version bump was not applied")
 changes.write_text(changes.read_text(encoding="utf-8") + """
 ## v0.7.5 update-discovery test release
 - Version-only update from v0.7.4 to v0.7.5.
@@ -2205,3 +2205,107 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Version 0.7.6 / versionCode 288; experimental APK build only.
 """, encoding="utf-8")
 print("LumiDrive 0.7.6 update prompt branded icon applied.")
+
+
+# LumiDrive v0.7.7 — fix updater's downloaded APK filename.
+# The original Fermata updater creates "Fermata-<random digits>.apk", which
+# Android's package installer shows as the downloaded filename. The Release
+# asset URL has already been validated as our official repository's versioned
+# APK, so use its actual basename: LumiDrive-v0.7.7-arm64.apk.
+#
+# Preserve the SHA-256 verification, FileProvider and Android install flow.
+# Never overwrite arbitrary files already present in public Downloads.
+download_main_path = "fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java"
+replace_exact(
+    download_main_path,
+    """\t\t\tFile tmp;
+\t\t\tFile dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);""",
+    """            String releaseFileName = Uri.parse(uri).getLastPathSegment();
+            // Accept only the already-vetted LumiDrive release APK naming scheme.
+            // This filename is safe to use in both Downloads and app cache.
+            if (releaseFileName == null ||
+                    !releaseFileName.matches(
+                            "LumiDrive-v[0-9]+[.][0-9]+[.][0-9]+-arm64[.]apk")) {
+                return failed(new SecurityException("Unexpected LumiDrive update filename"));
+            }
+            File tmp;
+            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);""",
+)
+updater_source = root / download_main_path
+main_source = updater_source.read_text(encoding="utf-8")
+if main_source.count("if ((tmp = createTempFile(dir)) == null) {") != 2:
+    raise SystemExit("Unexpected updater temporary-file call sites")
+main_source = main_source.replace(
+    "if ((tmp = createTempFile(dir)) == null) {",
+    "if ((tmp = createTempFile(dir, releaseFileName, false)) == null) {",
+    1
+)
+main_source = main_source.replace(
+    "if ((tmp = createTempFile(dir)) == null) {",
+    "if ((tmp = createTempFile(dir, releaseFileName, true)) == null) {",
+    1
+)
+updater_source.write_text(main_source, encoding="utf-8")
+replace_exact(
+    download_main_path,
+    """\tprivate static File createTempFile(File dir) {
+\t\ttry {
+\t\t\tif (dir == null) return null;
+\t\t\treturn File.createTempFile("Fermata-", ".apk", dir);
+\t\t} catch (Exception ex) {
+\t\t\tLog.e(ex, "Failed to create a temporary file in the directory ", dir);
+\t\t\treturn null;
+\t\t}
+\t}""",
+    """    private static File createTempFile(File dir, String fileName, boolean appCache) {
+        try {
+            if (dir == null || !dir.isDirectory()) return null;
+            File f = new File(dir, fileName);
+            if (!f.getCanonicalFile().getParentFile().equals(dir.getCanonicalFile())) {
+                return null;
+            }
+            if (f.exists()) {
+                // Public Downloads could contain a user-owned file with this
+                // name: never replace it. Only reuse our app-owned cache.
+                if (!appCache || !f.isFile() || !f.delete()) return null;
+            }
+            // Actually test write permission, preserving the original fallback
+            // from public Downloads to our app-specific cache/updates folder.
+            if (!f.createNewFile()) return null;
+            return f;
+        } catch (Exception ex) {
+            Log.e(ex, "Failed to create LumiDrive update file in ", dir);
+            return null;
+        }
+    }""",
+)
+verified = updater_source.read_text(encoding="utf-8")
+if verified.count("createTempFile(dir, releaseFileName, false)") != 1:
+    raise SystemExit("Public Downloads updater filename fix missing")
+if verified.count("createTempFile(dir, releaseFileName, true)") != 1:
+    raise SystemExit("App-cache updater filename fix missing")
+if 'File.createTempFile("Fermata-", ".apk", dir)' in verified:
+    raise SystemExit("Old Fermata APK naming still exists")
+if verified.count("lumiDriveDigestMatches(f, sha256.substring(7))") != 1:
+    raise SystemExit("SECURITY: downloaded APK digest check changed")
+if verified.count('FileProvider.getUriForFile(getApplicationContext(), getPackageName() + ".FileProvider"') != 1:
+    raise SystemExit("SECURITY: FileProvider installer path changed")
+if verified.count('lumiDriveCompareVersions(BuildConfig.VERSION_NAME, version)') != 1:
+    raise SystemExit("SECURITY: release version check changed")
+dashboard_source = (root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveDashboard.java").read_text(encoding="utf-8")
+if 'openAddon(activity, R.id.web_browser_fragment, "https://www.google.com/")' not in dashboard_source:
+    raise SystemExit("Google landing page not wired to LumiDrive browser card")
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.7 browser and update filename fixes
+- The LumiDrive Browser card opens https://www.google.com/ even when the
+  previous session had a blank/empty browser URL; regular navigation remains.
+- The app-downloaded update filename is taken from the validated GitHub Release
+  APK asset name, e.g. LumiDrive-v0.7.7-arm64.apk (no Fermata prefix or random
+  digits shown in the Android installer).
+- The public Downloads directory is never overwritten: if the desired filename
+  exists or is inaccessible, use app-owned cache/updates instead.
+- Keep package identity, SHA-256 validation, install flow and Android Auto
+  playback logic unchanged. Version 0.7.7 / versionCode 289.
+""", encoding="utf-8")
+print("LumiDrive v0.7.7 browser and updater filename fixes applied.")
