@@ -2248,7 +2248,7 @@ main_source = main_source.replace(
 updater_source.write_text(main_source, encoding="utf-8")
 replace_exact(
     download_main_path,
-    """\tprivate static File createTempFile(File dir) {
+    """    private static File createTempFile(File dir) {
 \t\ttry {
 \t\t\tif (dir == null) return null;
 \t\t\treturn File.createTempFile("Fermata-", ".apk", dir);
