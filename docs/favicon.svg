@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="LumiDrive">
+<defs><linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a173ee"/><stop offset="1" stop-color="#e167b1"/></linearGradient></defs>
+<rect x="2" y="2" width="60" height="60" rx="17" fill="url(#a)"/>
+<path d="M15 14H25V42H34V52H15Z" fill="#fff"/>
+<path d="M34 16L53 32L34 48Z" fill="#fff"/>
+</svg>
