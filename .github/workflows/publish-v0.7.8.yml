@@ -76,8 +76,8 @@ jobs:
           test -n "$new_cert"
           mkdir -p previous
           gh release download v0.7.7 -R "$REPO" \
-            --pattern 'LumiDrive-v0.7.8-arm64.apk' --dir previous
-          old_apk=previous/LumiDrive-v0.7.8-arm64.apk
+            --pattern 'LumiDrive-v0.7.7-arm64.apk' --dir previous
+          old_apk=previous/LumiDrive-v0.7.7-arm64.apk
           previous_info="$("$tools_dir/aapt" dump badging "$old_apk" | grep '^package:')"
           if [[ "$previous_info" != *"name='com.lumi.drive.auto' versionCode='289' versionName='0.7.7'"* ]]; then
             echo "::error::Unexpected previous release package identity."
@@ -87,7 +87,7 @@ jobs:
           old_cert="$(grep -m1 '^Signer #1 certificate SHA-256 digest:' previous/old-cert.txt | awk '{print $NF}')"
           test -n "$old_cert"
           if [[ "$old_cert" != "$new_cert" ]]; then
-            echo "::error::APK signing mismatch with 0.7.8. Release blocked."
+            echo "::error::APK signing mismatch with v0.7.7. Release blocked."
             exit 1
           fi
           echo "Android package, version upgrade, and signer verified."
