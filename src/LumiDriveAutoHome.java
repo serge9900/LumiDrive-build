@@ -20,7 +20,7 @@ import me.aap.fermata.R;
 import me.aap.fermata.addon.AddonManager;
 
 /**
- * LumiDrive Auto UI 1.0, experimental dashboard for the parked car screen.
+ * LumiDrive Auto UX 1.1: clearer car dashboard with larger focus cues.
  *
  * A removable overlay on the existing car activity's main layout. All media,
  * playback, fragment navigation and Android Auto transport implementation
@@ -86,7 +86,7 @@ public final class LumiDriveAutoHome {
 
         LinearLayout content = new LinearLayout(ctx);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(ctx, 17), dp(ctx, 13), dp(ctx, 17), dp(ctx, 13));
+        content.setPadding(dp(ctx, 12), dp(ctx, 9), dp(ctx, 12), dp(ctx, 10));
 
         LinearLayout header = new LinearLayout(ctx);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -106,17 +106,19 @@ public final class LumiDriveAutoHome {
         header.addView(identity, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        ImageView settings = icon(ctx, R.drawable.settings, CYAN, dp(ctx, 42));
+        ImageView settings = icon(ctx, R.drawable.lumidrive_car_settings, CYAN, dp(ctx, 42));
         settings.setContentDescription(ctx.getString(R.string.lumidrive_auto_settings));
         settings.setFocusable(true);
         settings.setClickable(true);
         settings.setOnClickListener(v -> open(activity, host, home, R.id.settings_fragment));
+        settings.setOnFocusChangeListener((v, focused) -> v.setBackground(round(
+                focused ? 0xFF493263 : 0x553E315B, dp(ctx, 12), focused ? CYAN : EDGE)));
         header.addView(settings, new LinearLayout.LayoutParams(dp(ctx, 44), dp(ctx, 44)));
         content.addView(header);
 
-        space(ctx, content, 10);
+        space(ctx, content, 7);
         content.addView(label(ctx, ctx.getString(R.string.lumidrive_auto_welcome),
-                20, TEXT, true));
+                19, TEXT, true));
         space(ctx, content, 2);
         content.addView(label(ctx, ctx.getString(R.string.lumidrive_auto_hint),
                 12, SUBTEXT, false));
@@ -134,7 +136,8 @@ public final class LumiDriveAutoHome {
                 R.string.lumidrive_auto_websites,
                 R.string.lumidrive_auto_files
         };
-        int[] icons = {R.drawable.tv, R.drawable.youtube, R.drawable.web, R.drawable.video};
+        int[] icons = {R.drawable.lumidrive_car_iptv, R.drawable.lumidrive_car_youtube,
+                R.drawable.lumidrive_car_browser, R.drawable.lumidrive_car_library};
         int[] colors = {PINK, PURPLE, CYAN, PURPLE};
         int[] tileBgs = {0xFF352041, 0xFF302249, 0xFF193449, 0xFF2C2047};
 
@@ -149,17 +152,18 @@ public final class LumiDriveAutoHome {
                         ctx.getString(titles[itemIndex]),
                         ctx.getString(subtitles[itemIndex]),
                         icons[itemIndex], colors[itemIndex], tileBgs[itemIndex]);
-                tile.setContentDescription(ctx.getString(titles[itemIndex]));
+                tile.setContentDescription(ctx.getString(titles[itemIndex]) + ". " +
+                        ctx.getString(subtitles[itemIndex]));
                 tile.setOnClickListener(v -> openDestination(activity, host, home, itemIndex));
                 LinearLayout.LayoutParams tileLp =
-                        new LinearLayout.LayoutParams(0, dp(ctx, 112), 1f);
+                        new LinearLayout.LayoutParams(0, dp(ctx, 105), 1f);
                 tileLp.setMargins(dp(ctx, 3), dp(ctx, 3), dp(ctx, 3), dp(ctx, 4));
                 line.addView(tile, tileLp);
             }
             content.addView(line);
         }
 
-        space(ctx, content, 10);
+        space(ctx, content, 8);
         LinearLayout quickLinks = new LinearLayout(ctx);
         quickLinks.setOrientation(LinearLayout.HORIZONTAL);
         quickLinks.setGravity(Gravity.CENTER_VERTICAL);
@@ -172,7 +176,17 @@ public final class LumiDriveAutoHome {
                 () -> open(activity, host, home, R.id.settings_fragment));
         content.addView(quickLinks);
 
-        space(ctx, content, 12);
+        // Spotify/Yandex Music run as separate Android Auto audio apps.
+        // Display guidance rather than broken app-launch buttons on the head unit.
+        space(ctx, content, 9);
+        TextView musicTip = label(ctx,
+                "♫  Spotify · Яндекс Музыка — в меню приложений Android Auto",
+                11, SUBTEXT, false);
+        musicTip.setGravity(Gravity.CENTER);
+        musicTip.setPadding(dp(ctx, 6), dp(ctx, 7), dp(ctx, 6), dp(ctx, 7));
+        musicTip.setBackground(round(0xFF271B3B, dp(ctx, 12), EDGE));
+        content.addView(musicTip);
+        space(ctx, content, 8);
         TextView foot = label(ctx,
                 ctx.getString(R.string.lumidrive_auto_parked),
                 10, SUBTEXT, false);
@@ -203,22 +217,27 @@ public final class LumiDriveAutoHome {
                                      int drawable, int accent, int background) {
         LinearLayout view = new LinearLayout(ctx);
         view.setOrientation(LinearLayout.VERTICAL);
-        view.setPadding(dp(ctx, 15), dp(ctx, 10), dp(ctx, 12), dp(ctx, 9));
+        view.setPadding(dp(ctx, 14), dp(ctx, 9), dp(ctx, 12), dp(ctx, 8));
         view.setBackground(gradient(background, 0xFF24182F, dp(ctx, 18), EDGE));
-        ImageView symbol = icon(ctx, drawable, accent, dp(ctx, 34));
-        view.addView(symbol, new LinearLayout.LayoutParams(dp(ctx, 37), dp(ctx, 37)));
-        space(ctx, view, 5);
-        view.addView(label(ctx, title, 17, TEXT, true));
-        space(ctx, view, 1);
+        ImageView symbol = icon(ctx, drawable, accent, dp(ctx, 37));
+        symbol.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        view.addView(symbol, new LinearLayout.LayoutParams(dp(ctx, 40), dp(ctx, 40)));
+        space(ctx, view, 2);
+        view.addView(label(ctx, title, 16, TEXT, true));
+        space(ctx, view, 0);
         TextView sub = label(ctx, subtitle, 11, SUBTEXT, false);
         sub.setSingleLine(true);
         sub.setEllipsize(android.text.TextUtils.TruncateAt.END);
         view.addView(sub);
         view.setClickable(true);
         view.setFocusable(true);
-        view.setOnFocusChangeListener((v, focused) ->
-                v.setBackground(gradient(background, 0xFF24182F, dp(ctx, 18),
-                        focused ? accent : EDGE)));
+        view.setOnFocusChangeListener((v, focused) -> {
+            v.setBackground(gradient(background, 0xFF24182F, dp(ctx, 18),
+                    focused ? accent : EDGE));
+            v.setElevation(focused ? dp(ctx, 8) : 0);
+            v.setScaleX(focused ? 1.02f : 1f);
+            v.setScaleY(focused ? 1.02f : 1f);
+        });
         return view;
     }
 
@@ -231,6 +250,10 @@ public final class LumiDriveAutoHome {
         link.setContentDescription(title);
         link.setFocusable(true);
         link.setOnClickListener(v -> action.run());
+        link.setMinHeight(dp(ctx, 48));
+        link.setOnFocusChangeListener((v, focused) -> v.setBackground(round(
+                focused ? 0xFF473064 : 0xFF2C203F,
+                dp(ctx, 14), focused ? accent : EDGE)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         lp.setMargins(dp(ctx, 3), 0, dp(ctx, 3), 0);
@@ -242,7 +265,8 @@ public final class LumiDriveAutoHome {
         switch (index) {
             case 0 -> openAddon(activity, host, home, R.id.tv_fragment);
             case 1 -> openAddon(activity, host, home, R.id.youtube_fragment);
-            case 2 -> openAddon(activity, host, home, R.id.web_browser_fragment);
+            case 2 -> openAddon(activity, host, home,
+                    R.id.web_browser_fragment, "https://www.google.com/");
             case 3 -> open(activity, host, home, R.id.folders_fragment);
             default -> { }
         }
@@ -250,7 +274,12 @@ public final class LumiDriveAutoHome {
 
     private static void openAddon(MainActivityDelegate activity,
                                   ViewGroup host, View home, int id) {
-        if (AddonManager.get().hasAddon(id)) open(activity, host, home, id);
+        openAddon(activity, host, home, id, null);
+    }
+
+    private static void openAddon(MainActivityDelegate activity,
+                                  ViewGroup host, View home, int id, Object input) {
+        if (AddonManager.get().hasAddon(id)) open(activity, host, home, id, input);
         else android.widget.Toast.makeText(activity.getContext(),
                 R.string.lumidrive_auto_module_unavailable,
                 android.widget.Toast.LENGTH_SHORT).show();
@@ -258,8 +287,13 @@ public final class LumiDriveAutoHome {
 
     private static void open(MainActivityDelegate activity, ViewGroup host,
                              View home, int id) {
+        open(activity, host, home, id, null);
+    }
+
+    private static void open(MainActivityDelegate activity, ViewGroup host,
+                             View home, int id, Object input) {
         dismiss(host, home);
-        host.post(() -> activity.showFragment(id));
+        host.post(() -> activity.showFragment(id, input));
     }
 
     private static ImageView icon(Context ctx, int drawable, int color, int size) {
@@ -292,7 +326,7 @@ public final class LumiDriveAutoHome {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
         drawable.setCornerRadius(radius);
-        if (border != 0) drawable.setStroke(dpForBorder(), border);
+        if (border != 0) drawable.setStroke(2, border);
         return drawable;
     }
 
@@ -300,12 +334,8 @@ public final class LumiDriveAutoHome {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR, new int[]{first, last});
         drawable.setCornerRadius(radius);
-        if (border != 0) drawable.setStroke(dpForBorder(), border);
+        if (border != 0) drawable.setStroke(2, border);
         return drawable;
-    }
-
-    private static int dpForBorder() {
-        return 1;
     }
 
     private static int dp(Context ctx, float value) {
