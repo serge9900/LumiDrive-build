@@ -2435,3 +2435,18 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - v0.7.9 / versionCode 291, TEST BUILD only.
 """, encoding="utf-8")
 print("LumiDrive 0.7.9 clean car dashboard patch applied.")
+
+# Exclude unwanted optional modules before Gradle generates BuildConfig.ADDONS.
+# This removes their settings entries and their code from the universal APK.
+replace_exact(
+    "settings.gradle",
+    "    def name = ':' + it.name\n",
+    "    def name = ':' + it.name\n"
+    "    if (name in [':chat', ':poi']) return // LumiDrive: excluded addons\n",
+)
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## 0.7.9 — Remove unused addons
+- Exclude ChatGPT and POI from the build and generated addon registry.
+- Their entries are no longer offered in Settings > Addons.
+""", encoding="utf-8")
+print("LumiDrive: ChatGPT and POI excluded from addon registration and APK.")
