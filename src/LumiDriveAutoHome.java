@@ -180,7 +180,7 @@ public final class LumiDriveAutoHome {
         // Display guidance rather than broken app-launch buttons on the head unit.
         space(ctx, content, 9);
         TextView musicTip = label(ctx,
-                "♫  Spotify · Яндекс Музыка — в меню приложений Android Auto",
+                ctx.getString(R.string.lumidrive_auto_music_tip),
                 11, SUBTEXT, false);
         musicTip.setGravity(Gravity.CENTER);
         musicTip.setPadding(dp(ctx, 6), dp(ctx, 7), dp(ctx, 6), dp(ctx, 7));
