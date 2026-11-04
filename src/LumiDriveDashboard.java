@@ -2,6 +2,10 @@ package me.aap.fermata.ui.activity;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -203,8 +207,22 @@ public final class LumiDriveDashboard {
                 open(activity, host, home, R.id.settings_fragment));
         content.addView(shortcuts);
 
+        // Native music applications use their own accounts and audio services.
+        // Phone-only shortcuts: Android Auto has a separate, approved launcher.
+        space(ctx, content, 23);
+        content.addView(label(ctx, "Музыка", 19, TEXT, true));
+        space(ctx, content, 5);
+        content.addView(label(ctx, "Открывается в установленном музыкальном приложении",
+                12, MUTED, false));
+        space(ctx, content, 12);
+        LinearLayout musicRow = new LinearLayout(ctx);
+        musicRow.setOrientation(LinearLayout.HORIZONTAL);
+        musicShortcut(ctx, musicRow, "Spotify", "com.spotify.music", 0xFF7CE99E);
+        musicShortcut(ctx, musicRow, "Яндекс Музыка", "ru.yandex.music", 0xFFFF99CE);
+        content.addView(musicRow);
+
         space(ctx, content, 30);
-        TextView footer = label(ctx, "LumiDrive 0.5 · Сделано для твоего медиа",
+        TextView footer = label(ctx, "LumiDrive · Сделано для твоего медиа",
                 11, MUTED, false);
         footer.setGravity(Gravity.CENTER);
         content.addView(footer);
@@ -216,6 +234,74 @@ public final class LumiDriveDashboard {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         ViewCompat.requestApplyInsets(home);
         home.requestFocus();
+    }
+
+    private static void musicShortcut(Context ctx, LinearLayout row, String title,
+                                      String packageName, int accent) {
+        LinearLayout card = new LinearLayout(ctx);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(ctx, 12), dp(ctx, 10), dp(ctx, 7), dp(ctx, 10));
+        card.setBackground(round(0xFF291A41, dp(ctx, 17), 0xFF5B426F));
+        ImageView appIcon = new ImageView(ctx);
+        appIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        Drawable installedIcon = null;
+        try {
+            installedIcon = ctx.getPackageManager().getApplicationIcon(packageName);
+        } catch (PackageManager.NameNotFoundException ignored) {
+            // The app may be installed later; keep the shortcut discoverable.
+        }
+        if (installedIcon != null) {
+            appIcon.setImageDrawable(installedIcon);
+        } else {
+            // Neutral fallback, not a counterfeit third-party brand logo.
+            appIcon.setImageResource(R.drawable.lumidrive_car_music);
+            appIcon.setImageTintList(ColorStateList.valueOf(accent));
+        }
+        card.addView(appIcon, new LinearLayout.LayoutParams(dp(ctx, 37), dp(ctx, 37)));
+        TextView titleView = label(ctx, title, 14, TEXT, true);
+        titleView.setPadding(dp(ctx, 8), 0, 0, 0);
+        titleView.setSingleLine(true);
+        titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        card.addView(titleView, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        card.setContentDescription("Открыть " + title);
+        card.setFocusable(true);
+        card.setClickable(true);
+        card.setOnClickListener(v -> openMusicApp(ctx, packageName, title));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                0, dp(ctx, 67), 1f);
+        lp.setMargins(dp(ctx, 3), 0, dp(ctx, 3), 0);
+        row.addView(card, lp);
+    }
+
+    private static void openMusicApp(Context ctx, String packageName, String title) {
+        try {
+            Intent launch = ctx.getPackageManager().getLaunchIntentForPackage(packageName);
+            if (launch != null) {
+                ctx.startActivity(launch);
+                return;
+            }
+        } catch (RuntimeException ignored) {
+            // If app launch is blocked or missing, offer the official store.
+        }
+        new AlertDialog.Builder(ctx)
+                .setTitle(title)
+                .setMessage(title + " не установлен или недоступен. Открыть Google Play?")
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton("Google Play", (dialog, which) -> {
+                    try {
+                        ctx.startActivity(new Intent(Intent.ACTION_VIEW,
+                                Uri.parse("market://details?id=" + packageName)));
+                    } catch (RuntimeException failed) {
+                        try {
+                            ctx.startActivity(new Intent(Intent.ACTION_VIEW,
+                                    Uri.parse("https://play.google.com/store/apps/details?id="
+                                            + packageName)));
+                        } catch (RuntimeException ignored) { }
+                    }
+                })
+                .show();
     }
 
     private static void quickLink(Context ctx, LinearLayout row, String name,
