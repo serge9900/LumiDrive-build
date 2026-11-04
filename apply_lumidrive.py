@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "290"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.8"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "291"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.9"'),
     encoding="utf-8",
 )
 
@@ -336,7 +336,7 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Rounded toolbar, navigation, media and control-panel buttons.
 - Replaced phone launcher, adaptive icon and Android Auto media icon.
 - Default phone theme is now LumiDrive Purple; AA theme uses matching Dark palette.
-- Package remains com.lumi.drive.auto; versionCode increased to 290.
+- Package remains com.lumi.drive.auto; versionCode increased to 291.
 """, encoding="utf-8")
 print("LumiDrive v0.3 colorful rounded UI and adaptive icons applied successfully.")
 
@@ -2142,8 +2142,8 @@ print("LumiDrive 0.7.4 updater discovery hardening and diagnostics applied.")
 # LumiDrive 0.7.5 — version-only release for the 0.7.4 updater regression test.
 # No changes to media, diagnostics, Android Auto or updater source behavior.
 actual_versions = (root / "gradle/libs.versions.toml").read_text(encoding="utf-8")
-if 'appVersionCode = "290"' not in actual_versions or 'appVersionName = "0.7.8"' not in actual_versions:
-    raise SystemExit("LumiDrive 0.7.8 / 290 version bump was not applied")
+if 'appVersionCode = "291"' not in actual_versions or 'appVersionName = "0.7.9"' not in actual_versions:
+    raise SystemExit("LumiDrive 0.7.9 / 291 version bump was not applied")
 changes.write_text(changes.read_text(encoding="utf-8") + """
 ## v0.7.5 update-discovery test release
 - Version-only update from v0.7.4 to v0.7.5.
@@ -2364,3 +2364,103 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - v0.7.8 / versionCode 290.
 """, encoding="utf-8")
 print("LumiDrive v0.7.8 download progress icon replaced.")
+
+
+# LumiDrive 0.7.9: visual/UX refinement for the existing custom car dashboard
+# plus *phone-only* external music app shortcuts. These music apps are separate
+# Android Auto media apps and must be launched via AA's own app launcher on car.
+# No OAuth credentials, proprietary streaming, unauthorized playback or AA
+# intent bypasses are added.
+car_home = Path(__file__).resolve().parent / "src" / "LumiDriveAutoHome.java"
+phone_home = Path(__file__).resolve().parent / "src" / "LumiDriveDashboard.java"
+car_java = car_home.read_text(encoding="utf-8")
+phone_java = phone_home.read_text(encoding="utf-8")
+if "lumidrive_car_iptv" not in car_java or "lumidrive_car_settings" not in car_java:
+    raise SystemExit("Car UI vector icon ref missing")
+if 'ctx.getString(R.string.lumidrive_auto_music_tip)' not in car_java:
+    raise SystemExit("Localizable AA music guidance missing")
+if 'R.id.web_browser_fragment, "https://www.google.com/"' not in car_java:
+    raise SystemExit("AA browser dashboard should pass Google homepage as URL")
+if "com.spotify.music" not in phone_java or "ru.yandex.music" not in phone_java:
+    raise SystemExit("Phone music shortcuts missing")
+if "getLaunchIntentForPackage(packageName)" not in phone_java:
+    raise SystemExit("Music buttons should launch installed apps, not fake internal players")
+(root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveAutoHome.java").write_text(car_java, encoding="utf-8")
+(root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveDashboard.java").write_text(phone_java, encoding="utf-8")
+
+# Android 11+ package visibility declarations for the two specifically known
+# music apps; no broad QUERY_ALL_PACKAGES permission is needed or added.
+common_manifest = "fermata/src/main/AndroidManifest.xml"
+replace_exact(
+    common_manifest,
+    '''        <intent>
+            <action android:name="android.speech.tts.engine.INSTALL_TTS_DATA" />
+        </intent>
+    </queries>''',
+    '''        <intent>
+            <action android:name="android.speech.tts.engine.INSTALL_TTS_DATA" />
+        </intent>
+        <package android:name="com.spotify.music" />
+        <package android:name="ru.yandex.music" />
+    </queries>''',
+)
+if (root / common_manifest).read_text(encoding="utf-8").count(
+        '<package android:name="com.spotify.music" />') != 1:
+    raise SystemExit("Spotify app visibility declaration is missing")
+
+# Native Android VectorDrawable resources: tintable, scalable and no external
+# image assets. The AA home screen retains its own gradient tile backgrounds.
+auto_icons = {
+"iptv": """<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="24" android:viewportHeight="24">
+<path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M4,5 L20,5 Q22,5 22,7 L22,17 Q22,19 20,19 L4,19 Q2,19 2,17 L2,7 Q2,5 4,5 Z"/>
+<path android:fillColor="#FFFFFFFF" android:pathData="M10,8 L16,12 L10,16 Z"/>
+<path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M9,22 L15,22"/>
+</vector>""",
+"youtube": """<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="24" android:viewportHeight="24">
+<path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.9" android:strokeLineJoin="round" android:pathData="M5,5 C3,5 2,7 2,9 L2,15 C2,17 3,19 5,19 L19,19 C21,19 22,17 22,15 L22,9 C22,7 21,5 19,5 Z"/>
+<path android:fillColor="#FFFFFFFF" android:pathData="M10,8 L16,12 L10,16 Z"/>
+</vector>""",
+"browser": """<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="24" android:viewportHeight="24">
+<path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.7" android:strokeLineCap="round" android:pathData="M12,2 C6.5,2 2,6.5 2,12 C2,17.5 6.5,22 12,22 C17.5,22 22,17.5 22,12 C22,6.5 17.5,2 12,2 Z M2,12 L22,12 M12,2 C6,7 6,17 12,22 M12,2 C18,7 18,17 12,22"/>
+</vector>""",
+"library": """<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="24" android:viewportHeight="24">
+<path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M2,6 L10,6 L12,9 L22,9 L22,19 C22,20.5 21,21 19.5,21 L4.5,21 C3,21 2,20 2,18.5 Z"/>
+<path android:fillColor="#FFFFFFFF" android:pathData="M10,11 L16,15 L10,19 Z"/>
+</vector>""",
+"settings": """<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="24" android:viewportHeight="24">
+<path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineJoin="round" android:pathData="M10,2 L14,2 L14.7,4.5 L17,5.5 L19.5,4.4 L22,7.6 L20.3,9.7 L20.3,14.3 L22,16.4 L19.5,19.6 L17,18.5 L14.7,19.5 L14,22 L10,22 L9.3,19.5 L7,18.5 L4.5,19.6 L2,16.4 L3.7,14.3 L3.7,9.7 L2,7.6 L4.5,4.4 L7,5.5 L9.3,4.5 Z"/>
+<path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:pathData="M12,9 C10.3,9 9,10.3 9,12 C9,13.7 10.3,15 12,15 C13.7,15 15,13.7 15,12 C15,10.3 13.7,9 12,9 Z"/>
+</vector>""",
+"music": """<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="24" android:viewportHeight="24">
+<path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M10,17 L10,4 L21,2 L21,15 M10,8 L21,6"/>
+<path android:fillColor="#FFFFFFFF" android:pathData="M10,16 C8.5,14.4 5,14.9 4,17 C2.8,19.6 4.3,21.5 7,21 C9.3,20.6 10.5,19.1 10,16 Z M21,14 C19.5,12.4 16,12.9 15,15 C13.8,17.6 15.3,19.5 18,19 C20.3,18.6 21.5,17.1 21,14 Z"/>
+</vector>"""
+}
+for name, xml in auto_icons.items():
+    file = f"fermata/src/main/res/drawable/lumidrive_car_{name}.xml"
+    write_xml(file, '<?xml version="1.0" encoding="utf-8"?>\n' + xml)
+    ET.parse(root / file)
+
+for loc, message in (
+    ("values", "Spotify and Yandex Music: open from the Android Auto app launcher"),
+    ("values-ru", "Spotify и Яндекс Музыка — через меню приложений Android Auto")
+):
+    name = f"fermata/src/main/res/{loc}/lumidrive_car_music.xml"
+    write_xml(name,
+        '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
+        '  <string name="lumidrive_auto_music_tip">' + message + '</string>\n'
+        '</resources>\n')
+
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## v0.7.9 — Android Auto usability and companion music shortcuts
+- Refined 2x2 car dashboard for easier focus navigation, less vertical space,
+  improved selected/focus state and 6 crisp tintable vector icons.
+- Car screen identifies Spotify and Yandex Music as *independent* Android Auto
+  apps via localized information; no fake car shortcuts or activity launches.
+- Phone home adds working Spotify / Yandex Music shortcuts to open the installed
+  apps or their official Google Play listings if missing.
+- Added precise package visibility entries for Spotify and Yandex Music only.
+- Existing IPTV, YouTube, browser, library and Android Auto transport untouched.
+- v0.7.9 / versionCode 291; keep GitHub updater and SHA256 verification.
+""", encoding="utf-8")
+print("LumiDrive 0.7.9 car UX and companion music shortcuts patched.")
