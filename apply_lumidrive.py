@@ -324,8 +324,8 @@ original_catalog = catalog.read_text(encoding="utf-8")
 if 'appVersionCode = "268"' not in original_catalog or 'appVersionName = "2.0.2"' not in original_catalog:
     raise SystemExit("Pinned Fermata 2.0.2 catalog changed; review version before patch")
 catalog.write_text(
-    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "291"')
-                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.9"'),
+    original_catalog.replace('appVersionCode = "268"', 'appVersionCode = "292"')
+                    .replace('appVersionName = "2.0.2"', 'appVersionName = "0.7.10"'),
     encoding="utf-8",
 )
 
@@ -2142,7 +2142,7 @@ print("LumiDrive 0.7.4 updater discovery hardening and diagnostics applied.")
 # LumiDrive 0.7.5 — version-only release for the 0.7.4 updater regression test.
 # No changes to media, diagnostics, Android Auto or updater source behavior.
 actual_versions = (root / "gradle/libs.versions.toml").read_text(encoding="utf-8")
-if 'appVersionCode = "291"' not in actual_versions or 'appVersionName = "0.7.9"' not in actual_versions:
+if 'appVersionCode = "292"' not in actual_versions or 'appVersionName = "0.7.10"' not in actual_versions:
     raise SystemExit("LumiDrive 0.7.9 / 291 version bump was not applied")
 changes.write_text(changes.read_text(encoding="utf-8") + """
 ## v0.7.5 update-discovery test release
@@ -2450,3 +2450,77 @@ changes.write_text(changes.read_text(encoding="utf-8") + """
 - Their entries are no longer offered in Settings > Addons.
 """, encoding="utf-8")
 print("LumiDrive: ChatGPT and POI excluded from addon registration and APK.")
+
+# 0.7.10: reliable update transport and privately owned metadata input.
+(root / "fermata/src/main/java/me/aap/fermata/ui/activity/LumiDriveReleaseHttp.java").write_text(
+    (Path(__file__).resolve().parent / "src/LumiDriveReleaseHttp.java").read_text(encoding="utf-8"),
+    encoding="utf-8")
+p = root / main_java_path
+s = p.read_text(encoding="utf-8")
+start = s.index('\t\tHttpConnection.connect(o -> o.url(reqUrl), (resp, err) -> {')
+parse = s.index('\n\t\t\t\ttry {', start)
+end = s.index('\n\tprivate FutureSupplier<Void> update(', parse)
+block = s[parse:end]
+tail = '\n\t\t\treturn completedVoid();\n\t\t});\n\t}\n'
+if not block.endswith(tail):
+    raise SystemExit("Unexpected updater callback tail")
+block = block[:-len(tail)] + '\n\t}\n'
+block = block.replace('new JSONArray(TextUtils.toString(p, UTF_8))', 'new JSONArray(payload)')
+block = block.replace(
+    'if (manual) App.get().run(() -> showAlert(this,\n                            getString(R.string.lumidrive_update_check_failed)));', '')
+block = block.replace('}).main().onSuccess(res -> {', '''}).main().onCompletion((result, failure) -> {
+                lumiDriveChecking = false;
+            }).onFailure(failure -> {
+                Log.e(failure, "[LumiDrive][UPDATE] check failed");
+                if (manual && !isFinishing() && !isDestroyed())
+                    showAlert(this, getString(R.string.lumidrive_update_check_failed));
+            }).onSuccess(res -> {
+                if (isFinishing() || isDestroyed()) return;''')
+prefix = '''        lumiDriveChecking = true;
+        me.aap.utils.async.Promise<String> response = new me.aap.utils.async.Promise<>();
+        Thread worker = new Thread(() -> {
+            try {
+                response.complete(LumiDriveReleaseHttp.fetch(reqUrl));
+            } catch (Exception failure) {
+                response.completeExceptionally(failure);
+            }
+        }, "LumiDrive-Update");
+        worker.setDaemon(true);
+        worker.start();
+        response.then(payload -> {'''
+s = s[:start] + prefix + block + s[end:]
+s = s.replace('    public void checkUpdates(boolean manual) {', '''    private boolean lumiDriveChecking;
+
+    public void checkUpdates(boolean manual) {
+        if (lumiDriveChecking) {
+            if (manual) android.widget.Toast.makeText(this,
+                    R.string.lumidrive_update_checking, android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (manual) android.widget.Toast.makeText(this,
+                R.string.lumidrive_update_checking, android.widget.Toast.LENGTH_SHORT).show();''', 1)
+if 'new JSONArray(payload)' not in s or 'HttpConnection.connect(o -> o.url(reqUrl)' in s:
+    raise SystemExit("Updater transport replacement incomplete")
+p.write_text(s, encoding="utf-8")
+for locale, message in (("values", "Checking for updates…"), ("values-ru", "Проверяем обновления…")):
+    p = root / "fermata/src/main/res" / locale / "lumidrive_updates.xml"
+    xml = p.read_text(encoding="utf-8").replace("</resources>",
+        '<string name="lumidrive_update_checking">' + message + '</string>\n</resources>')
+    ET.fromstring(xml)
+    p.write_text(xml, encoding="utf-8")
+
+replace_exact(
+    "fermata/src/main/java/me/aap/fermata/media/lib/BrowsableItemBase.java",
+    "\t\t\tload.setProgress(list, 1, 2);\n\t\t\treturn loadMetadata(list).then(v -> sortChildren(list));",
+    "\t\t\t// Own the async metadata input; observers cannot mutate it via progress.\n"
+    "\t\t\tList<Item> snapshot = new ArrayList<>(list);\n"
+    "\t\t\tload.setProgress(new ArrayList<>(snapshot), 1, 2);\n"
+    "\t\t\treturn loadMetadata(snapshot).then(v -> sortChildren(snapshot));",
+)
+changes.write_text(changes.read_text(encoding="utf-8") + """
+## 0.7.10 reliability test
+- Platform HTTP release-feed reader with bounded timeouts and transient retries.
+- Incomplete responses fail explicitly; checks cannot overlap within an activity.
+- Metadata loading uses a private list isolated from progress observers.
+- No YouTube, audio focus, camera, or autoplay behavior changes.
+""", encoding="utf-8")
