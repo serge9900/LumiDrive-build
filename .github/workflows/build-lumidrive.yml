@@ -24,7 +24,7 @@ on:
       - lumidrive-v0.7.6-update-icon
       - lumidrive-v0.7.7-browser-update-filename
       - lumidrive-v0.7.8-download-notification-icon
-      - lumidrive-v0.7.10-reliability
+      - lumidrive-v0.7.11-world-tv
 
 permissions:
   contents: read
@@ -68,6 +68,12 @@ jobs:
           javac -d build/http-tests src/LumiDriveReleaseHttp.java tests/LumiDriveReleaseHttpTest.java
           java -cp build/http-tests LumiDriveReleaseHttpTest
 
+      - name: Test country catalog
+        run: |
+          mkdir -p build/world-tests
+          javac -encoding UTF-8 -d build/world-tests src/LumiWorldCountries.java tests/LumiWorldCountriesTest.java
+          java -cp build/world-tests LumiWorldCountriesTest
+
       - name: Download Fermata 2.0.2 source
         run: |
           git clone --recurse-submodules --branch 2.0.2 --depth 1 \
@@ -75,10 +81,11 @@ jobs:
           test -f upstream/LICENSE
           test -f upstream/fermata/build.gradle
 
-      - name: Apply LumiDrive v0.7.10 car dashboard only
+      - name: Apply LumiDrive v0.7.11 car dashboard only
         run: |
           python3 -m py_compile apply_lumidrive.py
           python3 apply_lumidrive.py upstream
+          python3 apply_world_tv.py upstream
           test -f upstream/LUMIDRIVE_CHANGES.md
 
       - name: Build universal Android Auto APK
@@ -104,17 +111,17 @@ jobs:
             find upstream/fermata/build/outputs -type f -name '*.apk' -print || true
             exit 1
           fi
-          cp "${apks[0]}" dist/LumiDrive-v0.7.10-arm64.apk
-          unzip -tqq dist/LumiDrive-v0.7.10-arm64.apk
-          sha256sum dist/LumiDrive-v0.7.10-arm64.apk > dist/SHA256SUMS.txt
-          ls -lh dist/LumiDrive-v0.7.10-arm64.apk
+          cp "${apks[0]}" dist/LumiDrive-v0.7.11-arm64.apk
+          unzip -tqq dist/LumiDrive-v0.7.11-arm64.apk
+          sha256sum dist/LumiDrive-v0.7.11-arm64.apk > dist/SHA256SUMS.txt
+          ls -lh dist/LumiDrive-v0.7.11-arm64.apk
 
       - name: Upload test APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LumiDrive-v0.7.10-APK-arm64
+          name: LumiDrive-v0.7.11-APK-arm64
           path: |
-            dist/LumiDrive-v0.7.10-arm64.apk
+            dist/LumiDrive-v0.7.11-arm64.apk
             dist/SHA256SUMS.txt
           retention-days: 30
           if-no-files-found: error
