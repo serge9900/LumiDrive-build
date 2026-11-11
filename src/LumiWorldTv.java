@@ -1,6 +1,5 @@
 package me.aap.fermata.addon.tv;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.text.Editable;
@@ -10,37 +9,43 @@ import android.view.ViewGroup;
 import android.widget.*;
 import java.util.*;
 import me.aap.fermata.R;
+import me.aap.fermata.ui.activity.MainActivityDelegate;
+import me.aap.utils.ui.menu.OverlayMenu;
+import me.aap.utils.ui.view.DialogBuilder;
+import me.aap.utils.ui.view.DialogView;
 
-/** UI only; playback and user playlists continue through the existing TV module. */
+/** Uses the existing in-screen overlay; never creates an Android window on a car context. */
 final class LumiWorldTv {
     static void chooseSource(TvFragment fragment, Runnable own) {
-        Context context = new android.view.ContextThemeWrapper(
-                fragment.getMainActivity().getContext(), android.R.style.Theme_Material_Dialog_Alert);
-        String[] choices = {context.getString(R.string.lumi_world_tv),
-                context.getString(R.string.lumi_own_playlist)};
-        AlertDialog dialog = new AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle(R.string.lumi_iptv_source)
-                .setAdapter(adapter(context, Arrays.asList(choices)), (d, position) -> {
-                    if (position == 0) show(fragment); else own.run();
-                }).setNegativeButton(android.R.string.cancel, null).create();
-        showDialog(dialog);
+        if (!active(fragment)) return;
+        fragment.getMainActivity().getContextMenu().show(builder -> {
+            builder.setTitle(R.string.lumi_iptv_source);
+            builder.addItem(R.id.lumi_world_tv, R.drawable.tv, R.string.lumi_world_tv)
+                    .setHandler(item -> { show(fragment); return true; });
+            builder.addItem(View.generateViewId(), R.string.lumi_own_playlist)
+                    .setHandler(item -> { if (active(fragment)) own.run(); return true; });
+        });
     }
 
     static void show(TvFragment fragment) {
-        Context context = new android.view.ContextThemeWrapper(
-                fragment.getMainActivity().getContext(), android.R.style.Theme_Material_Dialog_Alert);
+        if (!active(fragment)) return;
+        MainActivityDelegate activity = fragment.getMainActivity();
+        DialogBuilder dialog = dialog(activity);
+        Context context = dialog.getContext();
         Locale locale = context.getResources().getConfiguration().getLocales().get(0);
         List<String> all = LumiWorldCountries.codes(locale);
         List<String> visible = new ArrayList<>(all);
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
-        int pad = (int) (16 * context.getResources().getDisplayMetrics().density);
+        content.setBackgroundColor(0xff24173d);
+        int pad = (int) (12 * context.getResources().getDisplayMetrics().density);
         content.setPadding(pad, pad / 2, pad, 0);
         TextView info = new TextView(context);
         info.setText(R.string.lumi_world_info);
         info.setTextColor(Color.WHITE);
         content.addView(info);
-        EditText search = new EditText(context);
+        // CarActivity supplies CarEditText and Android Auto's input connection.
+        EditText search = activity.createEditText(context);
         search.setSingleLine(true);
         search.setHint(R.string.lumi_country_search);
         search.setTextColor(Color.WHITE);
@@ -56,11 +61,14 @@ final class LumiWorldTv {
         empty.setTextColor(Color.WHITE);
         content.addView(empty);
         list.setEmptyView(empty);
-        int height = (int) (context.getResources().getDisplayMetrics().heightPixels * .42f);
+        // Measure against the actual car/phone view, not the phone display behind projection.
+        int available = fragment.getView().getHeight();
+        if (available <= 0) available = context.getResources().getDisplayMetrics().heightPixels;
+        int height = Math.max((int) (48 * context.getResources().getDisplayMetrics().density),
+                (int) (available * .4f));
         content.addView(list, new LinearLayout.LayoutParams(-1, height));
-        AlertDialog dialog = new AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
-                .setTitle(R.string.lumi_world_tv).setView(content)
-                .setNegativeButton(android.R.string.cancel, null).create();
+        dialog.setTitle(R.string.lumi_world_tv).setView(content)
+                .setNegativeButton(android.R.string.cancel, null);
         search.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -74,29 +82,36 @@ final class LumiWorldTv {
             }
             public void afterTextChanged(Editable e) {}
         });
+        boolean[] loading = {false};
         list.setOnItemClickListener((parent, view, position, id) -> {
+            if (loading[0] || !active(fragment)) return;
             String code = visible.get(position);
-            dialog.dismiss();
-            Toast.makeText(context, R.string.lumi_country_loading, Toast.LENGTH_SHORT).show();
+            loading[0] = true;
+            list.setEnabled(false);
+            search.setEnabled(false);
+            info.setText(R.string.lumi_country_loading);
             fragment.getRootItem().openWorldCountry(code, LumiWorldCountries.name(code, locale))
                     .main().onCompletion((item, error) -> {
-                        if (!fragment.isAdded() || fragment.getView() == null) return;
+                        // Back/cancel/navigation must not reopen a stale dialog or switch screens.
+                        if (!active(fragment) || !content.isAttachedToWindow()) return;
+                        activity.getContextMenu().hide();
                         if (error != null || item == null) {
-                            AlertDialog failure = new AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
+                            dialog(activity)
                                     .setTitle(R.string.lumi_world_tv)
                                     .setMessage(R.string.lumi_country_failed)
                                     .setPositiveButton(R.string.lumi_try_again, (d, which) -> show(fragment))
-                                    .setNegativeButton(android.R.string.cancel, null).create();
-                            showDialog(failure);
-                        } else if (!fragment.isHidden()) {
+                                    .setNegativeButton(android.R.string.cancel, null).show();
+                        } else {
                             fragment.openFolder(item);
                         }
                     });
         });
-        showDialog(dialog);
-        dialog.getWindow().setSoftInputMode(
-                android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-        list.requestFocus();
+        dialog.show();
+        list.post(() -> { if (content.isAttachedToWindow()) list.requestFocus(); });
+    }
+
+    private static boolean active(TvFragment fragment) {
+        return fragment.isAdded() && fragment.getView() != null && !fragment.isHidden();
     }
 
     private static ArrayAdapter<String> adapter(Context context, List<String> items) {
@@ -110,13 +125,20 @@ final class LumiWorldTv {
         };
     }
 
-    private static void showDialog(AlertDialog dialog) {
-        dialog.show();
-        // Pair the white foreground with an explicit dark surface, independent of host theme.
-        dialog.getWindow().setBackgroundDrawable(
-                new android.graphics.drawable.ColorDrawable(0xff24173d));
-        whiteText(dialog.getWindow().getDecorView());
+    private static DialogBuilder dialog(MainActivityDelegate activity) {
+        // Same DialogView/OverlayMenu path as MainActivityDelegate.createDialogBuilder.
+        // Keep the contrast explicit without a platform AlertDialog or window token.
+        OverlayMenu menu = activity.getContextMenu();
+        return new DialogView.Builder(menu.getContext()) {
+            @Override public void show() {
+                DialogView view = build(menu::hide);
+                view.setBackgroundColor(0xff24173d);
+                whiteText(view);
+                menu.show(builder -> builder.setView(view));
+            }
+        };
     }
+
     private static void whiteText(View view) {
         if (view instanceof TextView) ((TextView) view).setTextColor(Color.WHITE);
         if (view instanceof ViewGroup) {

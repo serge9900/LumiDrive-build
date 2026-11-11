@@ -41,10 +41,10 @@ def apply(root, source):
             ET.tostring(resources, encoding="unicode"), encoding="utf-8")
     (root / "fermata/src/main/res/values/lumi_world_ids.xml").write_text(
         '<resources><item name="lumi_world_tv" type="id"/></resources>', encoding="utf-8")
-    replace("gradle/libs.versions.toml", 'appVersionCode = "292"', 'appVersionCode = "294"')
-    replace("gradle/libs.versions.toml", 'appVersionName = "0.7.10"', 'appVersionName = "0.7.11"')
+    replace("gradle/libs.versions.toml", 'appVersionCode = "292"', 'appVersionCode = "295"')
+    replace("gradle/libs.versions.toml", 'appVersionName = "0.7.10"', 'appVersionName = "0.7.12"')
     with (root / "LUMIDRIVE_CHANGES.md").open("a", encoding="utf-8") as output:
-        output.write("\n## 0.7.11 World channels (test build)\n"
+        output.write("\n## 0.7.12 World channels / car overlays (test build)\n"
           "- IPTV source chooser and menu entry: searchable countries supplied by IPTV-org.\n"
           "- Selected countries use the normal saved-source, cache, favorites and playback path.\n"
           "- Reopening a saved country reuses its URL; simultaneous requests are shared.\n"
