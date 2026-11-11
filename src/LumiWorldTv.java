@@ -14,10 +14,11 @@ import me.aap.fermata.R;
 /** UI only; playback and user playlists continue through the existing TV module. */
 final class LumiWorldTv {
     static void chooseSource(TvFragment fragment, Runnable own) {
-        Context context = fragment.getMainActivity().getContext();
+        Context context = new android.view.ContextThemeWrapper(
+                fragment.getMainActivity().getContext(), android.R.style.Theme_Material_Dialog_Alert);
         String[] choices = {context.getString(R.string.lumi_world_tv),
                 context.getString(R.string.lumi_own_playlist)};
-        AlertDialog dialog = new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
                 .setTitle(R.string.lumi_iptv_source)
                 .setAdapter(adapter(context, Arrays.asList(choices)), (d, position) -> {
                     if (position == 0) show(fragment); else own.run();
@@ -26,7 +27,8 @@ final class LumiWorldTv {
     }
 
     static void show(TvFragment fragment) {
-        Context context = fragment.getMainActivity().getContext();
+        Context context = new android.view.ContextThemeWrapper(
+                fragment.getMainActivity().getContext(), android.R.style.Theme_Material_Dialog_Alert);
         Locale locale = context.getResources().getConfiguration().getLocales().get(0);
         List<String> all = LumiWorldCountries.codes(locale);
         List<String> visible = new ArrayList<>(all);
@@ -56,7 +58,7 @@ final class LumiWorldTv {
         list.setEmptyView(empty);
         int height = (int) (context.getResources().getDisplayMetrics().heightPixels * .42f);
         content.addView(list, new LinearLayout.LayoutParams(-1, height));
-        AlertDialog dialog = new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
                 .setTitle(R.string.lumi_world_tv).setView(content)
                 .setNegativeButton(android.R.string.cancel, null).create();
         search.addTextChangedListener(new TextWatcher() {
@@ -80,7 +82,7 @@ final class LumiWorldTv {
                     .main().onCompletion((item, error) -> {
                         if (!fragment.isAdded() || fragment.getView() == null) return;
                         if (error != null || item == null) {
-                            AlertDialog failure = new AlertDialog.Builder(context)
+                            AlertDialog failure = new AlertDialog.Builder(context, android.R.style.Theme_Material_Dialog_Alert)
                                     .setTitle(R.string.lumi_world_tv)
                                     .setMessage(R.string.lumi_country_failed)
                                     .setPositiveButton(R.string.lumi_try_again, (d, which) -> show(fragment))
@@ -110,6 +112,9 @@ final class LumiWorldTv {
 
     private static void showDialog(AlertDialog dialog) {
         dialog.show();
+        // Pair the white foreground with an explicit dark surface, independent of host theme.
+        dialog.getWindow().setBackgroundDrawable(
+                new android.graphics.drawable.ColorDrawable(0xff24173d));
         whiteText(dialog.getWindow().getDecorView());
     }
     private static void whiteText(View view) {

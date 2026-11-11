@@ -41,7 +41,7 @@ def apply(root, source):
             ET.tostring(resources, encoding="unicode"), encoding="utf-8")
     (root / "fermata/src/main/res/values/lumi_world_ids.xml").write_text(
         '<resources><item name="lumi_world_tv" type="id"/></resources>', encoding="utf-8")
-    replace("gradle/libs.versions.toml", 'appVersionCode = "292"', 'appVersionCode = "293"')
+    replace("gradle/libs.versions.toml", 'appVersionCode = "292"', 'appVersionCode = "294"')
     replace("gradle/libs.versions.toml", 'appVersionName = "0.7.10"', 'appVersionName = "0.7.11"')
     with (root / "LUMIDRIVE_CHANGES.md").open("a", encoding="utf-8") as output:
         output.write("\n## 0.7.11 World channels (test build)\n"
