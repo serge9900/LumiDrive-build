@@ -14,9 +14,9 @@
 ![Language](https://img.shields.io/badge/UI-Русский%20%7C%20English-ff7ac8?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPL--3.0-a987ed?style=flat-square)
 
-[![Android build](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml/badge.svg?branch=lumidrive-v0.7.10-reliability)](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)
+[![Android build](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml/badge.svg?branch=lumidrive-v0.7.11-world-tv)](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)
 
-[🌐 Official LumiDrive website](https://serge9900.github.io/LumiDrive-build/) · [🇬🇧 English](#-english) · [🇷🇺 Русский](#-русский) · [⬇ Latest APK](https://github.com/serge9900/LumiDrive-build/releases/latest) · [Source / Builds](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.10-reliability) · [Developer](https://github.com/serge9900)
+[🌐 Official LumiDrive website](https://serge9900.github.io/LumiDrive-build/) · [🇬🇧 English](#-english) · [🇷🇺 Русский](#-русский) · [⬇ Latest APK](https://github.com/serge9900/LumiDrive-build/releases/latest) · [Source / Builds](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.11-world-tv) · [Developer](https://github.com/serge9900)
 
 </div>
 
@@ -30,7 +30,9 @@ The project is **experimental**. It is not an official Fermata or Binance produc
 
 ### ✨ What you can do
 
-- 📺 **IPTV:** Open live TV and M3U playlists, with existing TV source and EPG options.
+- 📺 **IPTV:** World channels by country, personal M3U playlists, source settings and EPG.
+
+**Channel catalog credit:** LumiDrive uses country channel playlists from [IPTV-org](https://github.com/iptv-org/iptv), distributed under the [Unlicense](https://github.com/iptv-org/iptv/blob/master/LICENSE). Thanks to its authors and contributors. Open **IPTV → Add → World channels** to search for a country and save its playlist. Personal playlists can still be added by URL or file. Some streams may be unavailable or region restricted.
 - ▶️ **YouTube:** Access the existing YouTube module from the home screen.
 - 🌐 **Web browser:** Open web pages without leaving the media experience.
 - 📁 **Media library:** Browse local folders, media files and playlists.
@@ -45,14 +47,14 @@ The LumiDrive phone interface uses a deep-purple background, rounded tiles, mode
 
 ### 🚀 Get the latest LumiDrive APK
 
-**Latest published release:** [LumiDrive v0.7.10 (292)](https://github.com/serge9900/LumiDrive-build/releases/latest). The app's first-party updater checks published GitHub Releases, not temporary GitHub Actions artifacts.
+**Latest published release:** [LumiDrive v0.7.11 (294)](https://github.com/serge9900/LumiDrive-build/releases/latest). The app's first-party updater checks published GitHub Releases, not temporary GitHub Actions artifacts.
 
 1. Open **[GitHub Releases → Latest](https://github.com/serge9900/LumiDrive-build/releases/latest)**.
-2. Under **Assets**, download the official `LumiDrive-v0.7.10-arm64.apk` (or use the in-app update checker).
+2. Under **Assets**, download the official `LumiDrive-v0.7.11-arm64.apk` (or use the in-app update checker).
 3. Install on a compatible ARM64 Android device. To update, install **over** an existing LumiDrive copy with the same signing certificate.
 4. Check IPTV, browser and media playback on your phone before trying Android Auto while parked.
 
-The source for the latest APK is in [`lumidrive-v0.7.10-reliability`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.10-reliability). The `main` branch hosts this website and the repository documentation.
+The source for the latest APK is in [`lumidrive-v0.7.11-world-tv`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.11-world-tv). The `main` branch hosts this website and the repository documentation.
 
 **Website:** [serge9900.github.io/LumiDrive-build/](https://serge9900.github.io/LumiDrive-build/) · [English site](https://serge9900.github.io/LumiDrive-build/en/). GitHub Pages must be enabled under **Settings → Pages → Deploy from a branch → main /docs** before these site links become live.
 
@@ -60,9 +62,9 @@ The source for the latest APK is in [`lumidrive-v0.7.10-reliability`](https://gi
 
 The build workflow checks out **Fermata 2.0.2**, its submodules and this repository's LumiDrive modifications, then compiles an Android APK using Gradle and Java 17.
 
-- **[`apply_lumidrive.py` — branding and code patches](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.10-reliability/apply_lumidrive.py)**
-- **[`src/LumiDriveDashboard.java` — LumiDrive phone dashboard](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.10-reliability/src/LumiDriveDashboard.java)**
-- **[`build-lumidrive.yml` — automated APK build](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.10-reliability/.github/workflows/build-lumidrive.yml)**
+- **[`apply_lumidrive.py` — branding and code patches](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/apply_lumidrive.py)**
+- **[`src/LumiDriveDashboard.java` — LumiDrive phone dashboard](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/src/LumiDriveDashboard.java)**
+- **[`build-lumidrive.yml` — automated APK build](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/.github/workflows/build-lumidrive.yml)**
 
 This repository contains **LumiDrive's patch/build sources**, not a complete standalone copy of Fermata or a permanently hosted APK. The pinned upstream source is downloaded as part of the build.
 
@@ -83,7 +85,9 @@ This repository contains **LumiDrive's patch/build sources**, not a complete sta
 
 ### ✨ Возможности
 
-- 📺 **IPTV:** телеканалы, M3U-плейлисты, настройки источников и EPG.
+- 📺 **IPTV:** «Каналы мира» по странам, свои M3U-плейлисты, настройки источников и EPG.
+
+**Источник каталога каналов:** в LumiDrive используются списки каналов по странам проекта [IPTV-org](https://github.com/iptv-org/iptv), распространяемые по лицензии [Unlicense](https://github.com/iptv-org/iptv/blob/master/LICENSE). Спасибо авторам и участникам проекта! Откройте **IPTV → кнопка добавления → «Каналы мира»**, найдите страну и сохраните её плейлист. Свои источники по ссылке или из файла можно добавлять как раньше. Некоторые трансляции могут быть недоступны или ограничены по региону.
 - ▶️ **YouTube:** переход в существующий модуль YouTube.
 - 🌐 **Браузер:** просмотр сайтов прямо из приложения.
 - 📁 **Медиатека:** локальные файлы, папки и плейлисты.
@@ -98,14 +102,14 @@ This repository contains **LumiDrive's patch/build sources**, not a complete sta
 
 ### 📦 Скачать и установить LumiDrive
 
-**Последняя опубликованная версия:** [LumiDrive 0.7.10 (292)](https://github.com/serge9900/LumiDrive-build/releases/latest). Приложение проверяет обновления в **GitHub Releases**, а не в промежуточных файлах GitHub Actions.
+**Последняя опубликованная версия:** [LumiDrive 0.7.11 (294)](https://github.com/serge9900/LumiDrive-build/releases/latest). Приложение проверяет обновления в **GitHub Releases**, а не в промежуточных файлах GitHub Actions.
 
 1. Открой **[GitHub Releases → Latest](https://github.com/serge9900/LumiDrive-build/releases/latest)**.
-2. В разделе **Assets** скачай официальный `LumiDrive-v0.7.10-arm64.apk` или обновись через настройки LumiDrive.
+2. В разделе **Assets** скачай официальный `LumiDrive-v0.7.11-arm64.apk` или обновись через настройки LumiDrive.
 3. Установи APK **поверх** текущей версии с совместимой подписью, не удаляя плейлисты и настройки.
 4. Проверь работу плеера и браузера сначала на телефоне. В автомобиле тестируй только на стоянке.
 
-Исходники последней версии — ветка [`lumidrive-v0.7.10-reliability`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.10-reliability). В `main` находятся сайт, README и базовые сборочные инструменты.
+Исходники последней версии — ветка [`lumidrive-v0.7.11-world-tv`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.11-world-tv). В `main` находятся сайт, README и базовые сборочные инструменты.
 
 **Официальный сайт:** [serge9900.github.io/LumiDrive-build/](https://serge9900.github.io/LumiDrive-build/). Перед открытием ссылки нужно один раз включить GitHub Pages: **Settings → Pages → Deploy from a branch → main /docs**.
 
@@ -113,7 +117,7 @@ This repository contains **LumiDrive's patch/build sources**, not a complete sta
 
 Для сборки используются исходники **Fermata 2.0.2** и собственные изменения LumiDrive. Всё выполняется через GitHub Actions, поэтому для скачивания APK Android Studio не требуется.
 
-Полезные файлы: [скрипт изменений](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.10-reliability/apply_lumidrive.py), [главный экран](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.10-reliability/src/LumiDriveDashboard.java), [сборка GitHub Actions](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.10-reliability/.github/workflows/build-lumidrive.yml).
+Полезные файлы: [скрипт изменений](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/apply_lumidrive.py), [главный экран](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/src/LumiDriveDashboard.java), [сборка GitHub Actions](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/.github/workflows/build-lumidrive.yml).
 
 ### ⚠️ Что важно знать
 
@@ -157,6 +161,6 @@ LumiDrive is an independent derivative project; it is **not officially affiliate
 ---
 
 **Made with 💜 by [Sergey Vardanyan](https://github.com/serge9900)**  
-*LumiDrive · Experimental Android multimedia project · Latest Release v0.7.10*
+*LumiDrive · Experimental Android multimedia project · Latest Release v0.7.11*
 
 </div>
