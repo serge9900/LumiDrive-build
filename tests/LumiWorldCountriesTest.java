@@ -8,6 +8,7 @@ public class LumiWorldCountriesTest {
    if (!LumiWorldCountries.url(code).equals("https://iptv-org.github.io/iptv/countries/"+code+".m3u")) throw new AssertionError("URL");
    if (LumiWorldCountries.name(code, Locale.ENGLISH).isEmpty()) throw new AssertionError("Name");
   }
+  if (!LumiWorldCountries.name("uk", Locale.ENGLISH).equals("United Kingdom")) throw new AssertionError("UK alias");
   if (!LumiWorldCountries.matches("am", "Армения", new Locale("ru"))) throw new AssertionError("Russian search");
   if (!LumiWorldCountries.matches("am", " ARMENIA ", new Locale("ru"))) throw new AssertionError("English search");
   if (LumiWorldCountries.matches("am", "zzzz", Locale.ENGLISH)) throw new AssertionError("Filter");

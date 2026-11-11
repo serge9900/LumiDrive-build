@@ -11,7 +11,7 @@ public final class LumiWorldCountries {
         return result;
     }
     public static String name(String code, Locale locale) {
-        return new Locale("", code.toUpperCase(Locale.ROOT)).getDisplayCountry(locale);
+        return new Locale("", ("uk".equals(code) ? "gb" : code).toUpperCase(Locale.ROOT)).getDisplayCountry(locale);
     }
     public static String url(String code) {
         if (!Arrays.asList(CODES.split(" ")).contains(code))
