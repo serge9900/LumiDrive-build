@@ -93,6 +93,8 @@ jobs:
         run: |
           python3 -m py_compile apply_style_refresh.py
           python3 apply_style_refresh.py upstream
+          python3 -m py_compile apply_internal_design.py
+          python3 apply_internal_design.py upstream
 
       - name: Build universal Android Auto APK
         working-directory: upstream
@@ -117,18 +119,18 @@ jobs:
             find upstream/fermata/build/outputs -type f -name '*.apk' -print || true
             exit 1
           fi
-          cp "${apks[0]}" dist/LumiDrive-v0.8.0-preview1-arm64.apk
-          unzip -tqq dist/LumiDrive-v0.8.0-preview1-arm64.apk
-          sha256sum dist/LumiDrive-v0.8.0-preview1-arm64.apk > dist/SHA256SUMS.txt
-          ls -lh dist/LumiDrive-v0.8.0-preview1-arm64.apk
+          cp "${apks[0]}" dist/LumiDrive-v0.8.0-preview2-arm64.apk
+          unzip -tqq dist/LumiDrive-v0.8.0-preview2-arm64.apk
+          sha256sum dist/LumiDrive-v0.8.0-preview2-arm64.apk > dist/SHA256SUMS.txt
+          ls -lh dist/LumiDrive-v0.8.0-preview2-arm64.apk
 
       - name: Upload test APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LumiDrive-v0.8.0-preview1-APK-arm64
+          name: LumiDrive-v0.8.0-preview2-APK-arm64
           path: |
-            dist/LumiDrive-v0.8.0-preview1-arm64.apk
+            dist/LumiDrive-v0.8.0-preview2-arm64.apk
             dist/SHA256SUMS.txt
-            upstream/LUMIDRIVE_STYLE_AUDIT.json
+
           retention-days: 30
           if-no-files-found: error
