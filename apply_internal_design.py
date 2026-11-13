@@ -137,9 +137,9 @@ replace(view, '\t\tsetSize(ctx, grid, size);', '''
 replace(view, '''		if (!grid) {
 			int iconSize = (int) (getTitle().getTextSize() + getSubtitle().getTextSize() + toPx(ctx,
 					10));''', '''
-        setMinimumHeight((int) toPx(ctx, (grid ? 76 : 56) * Math.max(1f, size)));
+        setMinimumHeight((int) (toPx(ctx, grid ? 76 : 56) * Math.max(1f, size)));
         {
-            int iconSize = (int) toPx(ctx, 32 * size);''')
+            int iconSize = (int) (toPx(ctx, 32) * size);''')
 replace(view, '\t\tMaterialCheckBox cb = getCheckBox();', '''
         MaterialCheckBox cb = getCheckBox();
         View actions = findViewById(R.id.lumi_item_actions);
