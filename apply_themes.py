@@ -126,7 +126,7 @@ helper = 'me.aap.utils.ui.LumiThemeColors'
 for name in ('LumiDriveDashboard', 'LumiDriveAutoHome'):
     p = app + f'java/me/aap/fermata/ui/activity/{name}.java'
     s = (root / p).read_text(encoding='utf-8')
-    s = s.replace('round(', 'round(ctx, ').replace('gradient(', 'gradient(ctx, ')
+    s = re.sub(r'\b(round|gradient)\(', r'\1(ctx, ', s)
     s = s.replace('round(ctx, int', 'round(Context ctx, int').replace('gradient(ctx, int', 'gradient(Context ctx, int')
     s = s.replace('view.setTextColor(color);', f'view.setTextColor({helper}.label(ctx, color));')
     s = s.replace('ColorStateList.valueOf(color)', f'ColorStateList.valueOf({helper}.label(ctx, color))')
@@ -146,6 +146,8 @@ for name in ('LumiDriveDashboard', 'LumiDriveAutoHome'):
             {last} = {helper}.background(ctx, {last});
             border = {helper}.edge(ctx, border);
         }}''')
+    if '.setBackground(ctx,' in s or '.background(ctx, ctx,' in s:
+        raise RuntimeError('Theme conversion modified a View API call')
     write(p, s)
 
 # Programmatically created IPTV and diagnostic text must match its actual themed context.
