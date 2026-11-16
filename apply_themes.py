@@ -18,11 +18,11 @@ def replace(p, old, new):
 
 prefs = app + 'java/me/aap/fermata/ui/activity/MainActivityPrefs.java'
 replace(prefs, 'THEME_MAIN = Pref.i("THEME_MAIN", THEME_PURPLE)',
-        'THEME_MAIN = Pref.i("THEME_MAIN", THEME_SYSTEM)')
+        'THEME_MAIN = Pref.i("THEME_MAIN", THEME_DARK)')
 replace(prefs, 'return (AUTO && auto) ? getIntPref(THEME_AA) : getIntPref(THEME_MAIN);', '''
         Pref<IntSupplier> key = (AUTO && auto) ? THEME_AA : THEME_MAIN;
         int value = getIntPref(key);
-        if (value < THEME_DARK || value > THEME_SYSTEM) {
+        if (value < THEME_DARK || value > THEME_LIGHT) {
             value = THEME_DARK;
             applyIntPref(key, value);
         }
@@ -33,9 +33,8 @@ replace(settings, '\t\tps.addListPref(o -> {\n\t\t\to.store = a.getPrefs();\n\t\
         '\t\tps.addListPref(o -> {\n\t\t\to.store = a.getPrefs();\n\t\t\to.pref = theme;')
 replace(settings, '''o.values = new int[]{R.string.theme_dark, R.string.theme_light, R.string.theme_system,
 					R.string.theme_black, R.string.theme_star_wars, R.string.theme_purple,
-					R.string.theme_classic};''', '''o.values = new int[]{R.string.theme_system, R.string.theme_light, R.string.theme_dark};
-            o.valuesMap = new int[]{MainActivityPrefs.THEME_SYSTEM,
-                    MainActivityPrefs.THEME_LIGHT, MainActivityPrefs.THEME_DARK};''')
+					R.string.theme_classic};''', '''o.values = new int[]{R.string.lumi_theme_classic, R.string.theme_light};
+            o.valuesMap = new int[]{MainActivityPrefs.THEME_DARK, MainActivityPrefs.THEME_LIGHT};''')
 
 # Styles explicitly declare light/dark identity; shared XML consumes theme attributes.
 palette = {
@@ -170,26 +169,17 @@ replace(menu, 'v.setTextColor(0xfffaf7ff);', f'v.setTextColor({helper}.text(ctx)
 replace(menu, 'panel.setStroke((int) toPx(ctx, 1), 0xff655079);',
         f'panel.setStroke((int) toPx(ctx, 1), {helper}.edge(ctx, 0xff655079));')
 
-# Manifest consumes uiMode changes; explicitly refresh phone UI when following system.
-activity = app + 'java/me/aap/fermata/ui/activity/MainActivity.java'
-replace(activity, 'private static MainActivity activeInstance;', 'private static MainActivity activeInstance;\n    private int lumiNightMode;')
-replace(activity, 'protected void onCreate(Bundle savedInstanceState) {', '''protected void onCreate(Bundle savedInstanceState) {
-        lumiNightMode = getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;''')
-replace(activity, '\t@Override\n\tprotected void onDestroy() {', '''
-    @Override
-    public void onConfigurationChanged(android.content.res.Configuration config) {
-        super.onConfigurationChanged(config);
-        int mode = config.uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-        boolean changed = mode != lumiNightMode;
-        lumiNightMode = mode;
-        if (changed) getActivityDelegate().onSuccess(a -> {
-            boolean auto = isCarActivity() || FermataApplication.get().isMirroringMode();
-            if (a.getPrefs().getThemePref(auto) == MainActivityPrefs.THEME_SYSTEM) a.recreate();
-        });
-    }
-    @Override
-    protected void onDestroy() {''')
-replace('gradle/libs.versions.toml', 'appVersionCode = "297"', 'appVersionCode = "298"')
-replace('gradle/libs.versions.toml', 'appVersionName = "0.8.0-preview2"', 'appVersionName = "0.8.0-preview3"')
-print('Three-theme selection, legacy preference migration, themed resources and phone uiMode refresh applied')
-
+# Explicit choices only; retain the original MainActivity without a uiMode callback.
+for directory, label in [('values', 'LumiDrive Classic'), ('values-ru', 'Классическая LumiDrive')]:
+    write(app + f'res/{directory}/lumi_theme_names.xml',
+          '<resources><string name="lumi_theme_classic">' + label + '</string></resources>')
+delegate = app + 'java/me/aap/fermata/ui/activity/MainActivityDelegate.java'
+source = (root / delegate).read_text(encoding='utf-8')
+start = source.index('@StyleRes int theme = switch (Prefs.instance.getThemePref(auto)) {')
+end = source.index('\n\t\t};', start) + len('\n\t\t};')
+source = source[:start] + '''@StyleRes int theme = (Prefs.instance.getThemePref(auto) == MainActivityPrefs.THEME_LIGHT)
+                ? R.style.AppTheme_Light : R.style.AppTheme_Dark;''' + source[end:]
+write(delegate, source)
+replace('gradle/libs.versions.toml', 'appVersionCode = "297"', 'appVersionCode = "299"')
+replace('gradle/libs.versions.toml', 'appVersionName = "0.8.0-preview2"', 'appVersionName = "0.8.0-preview4"')
+print('Classic/light choices, legacy migration and fixed appearance applied')

@@ -28,8 +28,8 @@ for theme in ('light', 'dark'):
         print(f'{theme}: {fg} on {bg}: {ratio:.2f}:1')
 
 settings = (root / 'fermata/src/main/java/me/aap/fermata/ui/fragment/SettingsFragment.java').read_text()
-assert 'o.values = new int[]{R.string.theme_system, R.string.theme_light, R.string.theme_dark};' in settings
-assert 'o.valuesMap = new int[]{MainActivityPrefs.THEME_SYSTEM,' in settings
+assert 'o.values = new int[]{R.string.lumi_theme_classic, R.string.theme_light};' in settings
+assert 'o.valuesMap = new int[]{MainActivityPrefs.THEME_DARK, MainActivityPrefs.THEME_LIGHT};' in settings
 assert 'R.string.theme_star_wars' not in settings
 assert 'R.string.theme_purple' not in settings
 
@@ -41,5 +41,17 @@ for mode in ('grid','list'):
     doc = ET.parse(res / f'layout/media_item_{mode}_layout.xml')
     actions = next(x for x in doc.getroot() if x.get(ns+'id') == '@+id/lumi_item_actions')
     assert actions.get(ns+'tint') == '?attr/colorOnSecondary'
-print('Three-theme menu, shared state colors, action icon tint and contrast checks passed')
-
+print('Classic/light menu, shared state colors, action icon tint and contrast checks passed')
+assert 'R.string.theme_system' not in settings
+assert 'R.string.theme_dark' not in settings
+activity = (root / 'fermata/src/main/java/me/aap/fermata/ui/activity/MainActivity.java').read_text()
+assert 'lumiNightMode' not in activity
+delegate = (root / 'fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityDelegate.java').read_text()
+theme_selector = delegate[delegate.index('public static void setTheme('):delegate.index('ctx.setTheme(theme);')]
+assert 'UI_MODE_NIGHT' not in theme_selector
+assert 'AppTheme_Classic' not in theme_selector
+assert 'AppTheme_Light : R.style.AppTheme_Dark' in theme_selector
+prefs = (root / 'fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityPrefs.java').read_text()
+assert 'THEME_MAIN = Pref.i("THEME_MAIN", THEME_DARK)' in prefs
+assert 'value > THEME_LIGHT' in prefs
+print('No system-driven theme selection or appearance recreation remains')
