@@ -216,7 +216,7 @@ end = source.index('\n\t\t};', start) + len('\n\t\t};')
 source = source[:start] + '''@StyleRes int theme = (Prefs.instance.getThemePref(auto) == MainActivityPrefs.THEME_LIGHT)
                 ? R.style.AppTheme_Light : R.style.AppTheme_Dark;''' + source[end:]
 write(delegate, source)
-replace('gradle/libs.versions.toml', 'appVersionCode = "297"', 'appVersionCode = "300"')
-replace('gradle/libs.versions.toml', 'appVersionName = "0.8.0-preview2"', 'appVersionName = "0.8.0-preview5"')
+replace('gradle/libs.versions.toml', 'appVersionCode = "297"', 'appVersionCode = "301"')
+replace('gradle/libs.versions.toml', 'appVersionName = "0.8.0-preview2"', 'appVersionName = "0.8.0"')
 print('Classic/light choices, legacy migration and fixed appearance applied')
 
