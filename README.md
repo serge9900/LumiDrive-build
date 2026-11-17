@@ -14,9 +14,9 @@
 ![Language](https://img.shields.io/badge/UI-Русский%20%7C%20English-ff7ac8?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPL--3.0-a987ed?style=flat-square)
 
-[![Android build](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml/badge.svg?branch=lumidrive-v0.7.11-world-tv)](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)
+[![Android build](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml/badge.svg?branch=lumidrive-v0.8.0-style-preview)](https://github.com/serge9900/LumiDrive-build/actions/workflows/build-lumidrive.yml)
 
-[🌐 Official LumiDrive website](https://serge9900.github.io/LumiDrive-build/) · [🇬🇧 English](#-english) · [🇷🇺 Русский](#-русский) · [⬇ Latest APK](https://github.com/serge9900/LumiDrive-build/releases/latest) · [Source / Builds](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.11-world-tv) · [Developer](https://github.com/serge9900)
+[🌐 Official LumiDrive website](https://serge9900.github.io/LumiDrive-build/) · [🇬🇧 English](#-english) · [🇷🇺 Русский](#-русский) · [⬇ Latest APK](https://github.com/serge9900/LumiDrive-build/releases/latest) · [Source / Builds](https://github.com/serge9900/LumiDrive-build/tree/v0.8.0) · [Developer](https://github.com/serge9900)
 
 </div>
 
@@ -43,18 +43,18 @@ The project is **experimental**. It is not an official Fermata or Binance produc
 
 ### 🎨 Design
 
-The LumiDrive phone interface uses a deep-purple background, rounded tiles, modern icons and bright accent colors. Main dashboard labels are in Russian, with English fallback resources. Playback and settings retain parts of the upstream interface while the redesign continues.
+Version 0.8.0 refreshes internal media lists with compact rows, horizontal cards in grid mode and an overflow button for existing item actions. Choose between two manual themes: **LumiDrive Classic**, with brighter violet surfaces and cyan, lilac and rose accents, and **Light**. System-driven theme switching is removed. Restart the app in Android Auto after changing the theme. The wider redesign continues; not all concept screens are implemented.
 
 ### 🚀 Get the latest LumiDrive APK
 
-**Latest published release:** [LumiDrive v0.7.11 (294)](https://github.com/serge9900/LumiDrive-build/releases/latest). The app's first-party updater checks published GitHub Releases, not temporary GitHub Actions artifacts.
+**Latest published release:** [LumiDrive v0.8.0 (301)](https://github.com/serge9900/LumiDrive-build/releases/latest). The app's first-party updater checks published GitHub Releases, not temporary GitHub Actions artifacts.
 
 1. Open **[GitHub Releases → Latest](https://github.com/serge9900/LumiDrive-build/releases/latest)**.
-2. Under **Assets**, download the official `LumiDrive-v0.7.11-arm64.apk` (or use the in-app update checker).
+2. Under **Assets**, download the official `LumiDrive-v0.8.0-arm64.apk` (or use the in-app update checker).
 3. Install on a compatible ARM64 Android device. To update, install **over** an existing LumiDrive copy with the same signing certificate.
 4. Check IPTV, browser and media playback on your phone before trying Android Auto while parked.
 
-The source for the latest APK is in [`lumidrive-v0.7.11-world-tv`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.11-world-tv). The `main` branch hosts this website and the repository documentation.
+The source for the latest APK is in [`v0.8.0`](https://github.com/serge9900/LumiDrive-build/tree/v0.8.0). The `main` branch hosts this website and the repository documentation.
 
 **Website:** [serge9900.github.io/LumiDrive-build/](https://serge9900.github.io/LumiDrive-build/) · [English site](https://serge9900.github.io/LumiDrive-build/en/). GitHub Pages must be enabled under **Settings → Pages → Deploy from a branch → main /docs** before these site links become live.
 
@@ -62,9 +62,9 @@ The source for the latest APK is in [`lumidrive-v0.7.11-world-tv`](https://githu
 
 The build workflow checks out **Fermata 2.0.2**, its submodules and this repository's LumiDrive modifications, then compiles an Android APK using Gradle and Java 17.
 
-- **[`apply_lumidrive.py` — branding and code patches](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/apply_lumidrive.py)**
-- **[`src/LumiDriveDashboard.java` — LumiDrive phone dashboard](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/src/LumiDriveDashboard.java)**
-- **[`build-lumidrive.yml` — automated APK build](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/.github/workflows/build-lumidrive.yml)**
+- **[`apply_lumidrive.py` — branding and code patches](https://github.com/serge9900/LumiDrive-build/blob/v0.8.0/apply_lumidrive.py)**
+- **[`src/LumiDriveDashboard.java` — LumiDrive phone dashboard](https://github.com/serge9900/LumiDrive-build/blob/v0.8.0/src/LumiDriveDashboard.java)**
+- **[`build-lumidrive.yml` — automated APK build](https://github.com/serge9900/LumiDrive-build/blob/v0.8.0/.github/workflows/build-lumidrive.yml)**
 
 This repository contains **LumiDrive's patch/build sources**, not a complete standalone copy of Fermata or a permanently hosted APK. The pinned upstream source is downloaded as part of the build.
 
@@ -98,18 +98,18 @@ This repository contains **LumiDrive's patch/build sources**, not a complete sta
 
 ### 🎨 Интерфейс
 
-Тёмно-фиолетовый фон, мягкие градиенты, округлые карточки, голубые, розовые и сиреневые акценты. Главный экран уже оформлен в стиле LumiDrive. Остальные экраны постепенно обновляются с сохранением функций плеера.
+В версии 0.8.0 обновлены внутренние списки: компактные строки, горизонтальные карточки в режиме сетки и кнопка «⋯» для существующих действий. На выбор две темы: **«Классическая LumiDrive»** с более яркими фиолетовыми поверхностями, голубыми, сиреневыми и розовыми акцентами и **«Светлая»**. Автоматическое переключение по системной теме убрано. После смены темы в Android Auto перезапустите приложение. Редизайн продолжается: не все концептуальные экраны пока реализованы.
 
 ### 📦 Скачать и установить LumiDrive
 
-**Последняя опубликованная версия:** [LumiDrive 0.7.11 (294)](https://github.com/serge9900/LumiDrive-build/releases/latest). Приложение проверяет обновления в **GitHub Releases**, а не в промежуточных файлах GitHub Actions.
+**Последняя опубликованная версия:** [LumiDrive 0.8.0 (301)](https://github.com/serge9900/LumiDrive-build/releases/latest). Приложение проверяет обновления в **GitHub Releases**, а не в промежуточных файлах GitHub Actions.
 
 1. Открой **[GitHub Releases → Latest](https://github.com/serge9900/LumiDrive-build/releases/latest)**.
-2. В разделе **Assets** скачай официальный `LumiDrive-v0.7.11-arm64.apk` или обновись через настройки LumiDrive.
+2. В разделе **Assets** скачай официальный `LumiDrive-v0.8.0-arm64.apk` или обновись через настройки LumiDrive.
 3. Установи APK **поверх** текущей версии с совместимой подписью, не удаляя плейлисты и настройки.
 4. Проверь работу плеера и браузера сначала на телефоне. В автомобиле тестируй только на стоянке.
 
-Исходники последней версии — ветка [`lumidrive-v0.7.11-world-tv`](https://github.com/serge9900/LumiDrive-build/tree/lumidrive-v0.7.11-world-tv). В `main` находятся сайт, README и базовые сборочные инструменты.
+Исходники последней версии — тег [`v0.8.0`](https://github.com/serge9900/LumiDrive-build/tree/v0.8.0). В `main` находятся сайт, README и базовые сборочные инструменты.
 
 **Официальный сайт:** [serge9900.github.io/LumiDrive-build/](https://serge9900.github.io/LumiDrive-build/). Перед открытием ссылки нужно один раз включить GitHub Pages: **Settings → Pages → Deploy from a branch → main /docs**.
 
@@ -117,7 +117,7 @@ This repository contains **LumiDrive's patch/build sources**, not a complete sta
 
 Для сборки используются исходники **Fermata 2.0.2** и собственные изменения LumiDrive. Всё выполняется через GitHub Actions, поэтому для скачивания APK Android Studio не требуется.
 
-Полезные файлы: [скрипт изменений](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/apply_lumidrive.py), [главный экран](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/src/LumiDriveDashboard.java), [сборка GitHub Actions](https://github.com/serge9900/LumiDrive-build/blob/lumidrive-v0.7.11-world-tv/.github/workflows/build-lumidrive.yml).
+Полезные файлы: [скрипт изменений](https://github.com/serge9900/LumiDrive-build/blob/v0.8.0/apply_lumidrive.py), [главный экран](https://github.com/serge9900/LumiDrive-build/blob/v0.8.0/src/LumiDriveDashboard.java), [сборка GitHub Actions](https://github.com/serge9900/LumiDrive-build/blob/v0.8.0/.github/workflows/build-lumidrive.yml).
 
 ### ⚠️ Что важно знать
 
@@ -161,6 +161,6 @@ LumiDrive is an independent derivative project; it is **not officially affiliate
 ---
 
 **Made with 💜 by [Sergey Vardanyan](https://github.com/serge9900)**  
-*LumiDrive · Experimental Android multimedia project · Latest Release v0.7.11*
+*LumiDrive · Experimental Android multimedia project · Latest Release v0.8.0*
 
 </div>
