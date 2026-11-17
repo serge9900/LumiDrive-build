@@ -55,6 +55,22 @@ write(app + 'res/values/theme_light.xml', '<resources><style name="AppTheme.Ligh
       ''.join(f'<item name="{k}">{v}</item>' for k,v in palette.items()) + '</style></resources>')
 dark = app + 'res/values/theme_dark.xml'
 s = (root / dark).read_text(encoding='utf-8')
+classic = {
+    'android:colorBackground': '#241238', 'colorPrimaryDark': '#21112F',
+    'colorPrimary': '#301943', 'colorOnPrimary': '#8FE7FF',
+    'colorSecondary': '#3B2452', 'colorOnSecondary': '#CDB0FF',
+    'android:textColorPrimary': '#FFF8FF', 'android:textColorSecondary': '#EFE9FA',
+    'android:textColorTertiary': '#FFFFFF', 'boxStrokeColor': '#80609D',
+    'colorSecondaryVariant': '#633C7C', 'colorSurface': '#3B2452',
+    'colorOnSurface': '#FFF8FF', 'colorPrimarySurface': '#44285E',
+    'colorOnPrimarySurface': '#FFF8FF', 'colorAccent': '#FF7AC8',
+    'rippleColor': '#668FE7FF', 'android:textColorHint': '#D1C0E2',
+    'colorControlNormal': '#CDB0FF', 'colorControlActivated': '#8FE7FF',
+}
+doc = ET.fromstring(s)
+for item in doc.findall('.//item'):
+    if item.get('name') in classic: item.text = classic[item.get('name')]
+s = ET.tostring(doc, encoding='unicode')
 s = s.replace('</style>', '<item name="android:isLightTheme">false</item>'
               '<item name="android:windowLightStatusBar">false</item>'
               '<item name="android:windowLightNavigationBar">false</item></style>')
@@ -70,6 +86,26 @@ for p in [util+'res/drawable/lumidrive_nav_button.xml', util+'res/drawable/lumid
         for node in item.iter('solid'): node.set(A+'color', '?attr/colorSecondaryVariant' if active else '?attr/colorSecondary')
         for node in item.iter('stroke'): node.set(A+'color', '?attr/colorAccent' if active else '?attr/boxStrokeColor')
     write(p, ET.tostring(doc, encoding='unicode'))
+# Restore the violet/rose navigation accent only in Classic. Light retains its fill.
+write(util + 'res/values/lumi_theme_accents.xml', '''<resources>
+<attr name="lumiNavStart" format="color"/>
+<attr name="lumiNavEnd" format="color"/>
+</resources>''')
+for mode, start, end in [('dark', '#60419A', '#773E80'), ('light', '#E5D8F5', '#E5D8F5')]:
+    path = app + f'res/values/theme_{mode}.xml'
+    text = (root / path).read_text(encoding='utf-8')
+    text = text.replace('</style>', f'<item name="lumiNavStart">{start}</item>'
+                        f'<item name="lumiNavEnd">{end}</item></style>')
+    write(path, text)
+path = util + 'res/drawable/lumidrive_nav_button.xml'
+doc = ET.parse(root / path).getroot()
+for item in doc:
+    if item.get(A + 'state_selected') != 'true': continue
+    shape = item.find('shape')
+    solid = shape.find('solid')
+    if solid is not None: shape.remove(solid)
+    ET.SubElement(shape, 'gradient', {A+'angle':'0', A+'startColor':'?attr/lumiNavStart', A+'endColor':'?attr/lumiNavEnd'})
+write(path, ET.tostring(doc, encoding='unicode'))
 for name in ('media_item', 'media_item_border'):
     p = app + f'res/color/{name}.xml'
     doc = ET.parse(root / p).getroot()
@@ -180,6 +216,7 @@ end = source.index('\n\t\t};', start) + len('\n\t\t};')
 source = source[:start] + '''@StyleRes int theme = (Prefs.instance.getThemePref(auto) == MainActivityPrefs.THEME_LIGHT)
                 ? R.style.AppTheme_Light : R.style.AppTheme_Dark;''' + source[end:]
 write(delegate, source)
-replace('gradle/libs.versions.toml', 'appVersionCode = "297"', 'appVersionCode = "299"')
-replace('gradle/libs.versions.toml', 'appVersionName = "0.8.0-preview2"', 'appVersionName = "0.8.0-preview4"')
+replace('gradle/libs.versions.toml', 'appVersionCode = "297"', 'appVersionCode = "300"')
+replace('gradle/libs.versions.toml', 'appVersionName = "0.8.0-preview2"', 'appVersionName = "0.8.0-preview5"')
 print('Classic/light choices, legacy migration and fixed appearance applied')
+

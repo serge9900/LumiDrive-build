@@ -20,7 +20,8 @@ for theme in ('light', 'dark'):
              ('android:textColorSecondary', 'colorSecondary'),
              ('android:textColorTertiary', 'colorSecondaryVariant'),
              ('colorOnSurface', 'colorSurface'), ('colorOnPrimary', 'colorPrimary'),
-             ('colorOnSecondary', 'colorSecondaryVariant')]
+             ('colorOnSecondary', 'colorSecondaryVariant'),
+             ('colorOnPrimary', 'lumiNavStart'), ('colorOnPrimary', 'lumiNavEnd')]
     for fg,bg in pairs:
         hi,lo = sorted((luminance(colors[fg]), luminance(colors[bg])), reverse=True)
         ratio = (hi+.05)/(lo+.05)
@@ -55,3 +56,4 @@ prefs = (root / 'fermata/src/main/java/me/aap/fermata/ui/activity/MainActivityPr
 assert 'THEME_MAIN = Pref.i("THEME_MAIN", THEME_DARK)' in prefs
 assert 'value > THEME_LIGHT' in prefs
 print('No system-driven theme selection or appearance recreation remains')
+
