@@ -2,6 +2,8 @@ name: Build LumiDrive APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [lumidrive-v0.8.0-style-preview]
   push:
     branches:
       - lumidrive-v0.4-ui
@@ -82,7 +84,7 @@ jobs:
           test -f upstream/LICENSE
           test -f upstream/fermata/build.gradle
 
-      - name: Apply LumiDrive v0.7.12 car dashboard only
+      - name: Apply LumiDrive baseline patches
         run: |
           python3 -m py_compile apply_lumidrive.py
           python3 apply_lumidrive.py upstream
@@ -98,6 +100,8 @@ jobs:
           python3 -m py_compile apply_themes.py
           python3 apply_themes.py upstream
           python3 tests/validate_themes.py upstream
+          python3 apply_vice_sunset.py upstream
+          python3 tests/validate_vice_sunset.py upstream
 
       - name: Build universal Android Auto APK
         working-directory: upstream
@@ -122,17 +126,17 @@ jobs:
             find upstream/fermata/build/outputs -type f -name '*.apk' -print || true
             exit 1
           fi
-          cp "${apks[0]}" dist/LumiDrive-v0.8.0-arm64.apk
-          unzip -tqq dist/LumiDrive-v0.8.0-arm64.apk
-          sha256sum dist/LumiDrive-v0.8.0-arm64.apk > dist/SHA256SUMS.txt
-          ls -lh dist/LumiDrive-v0.8.0-arm64.apk
+          cp "${apks[0]}" dist/LumiDrive-Vice-Sunset-review-arm64.apk
+          unzip -tqq dist/LumiDrive-Vice-Sunset-review-arm64.apk
+          sha256sum dist/LumiDrive-Vice-Sunset-review-arm64.apk > dist/SHA256SUMS.txt
+          ls -lh dist/LumiDrive-Vice-Sunset-review-arm64.apk
 
       - name: Upload test APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LumiDrive-v0.8.0-APK-arm64
+          name: LumiDrive-Vice-Sunset-review-APK-arm64
           path: |
-            dist/LumiDrive-v0.8.0-arm64.apk
+            dist/LumiDrive-Vice-Sunset-review-arm64.apk
             dist/SHA256SUMS.txt
 
           retention-days: 30
