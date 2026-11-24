@@ -12,8 +12,13 @@ leaving legacy IDs 2–6 on the existing Classic migration path.
 The shared palette styles IPTV/media lists, browser/YouTube app controls,
 settings, menus, dialogs and playback chrome. Web pages and video imagery retain
 their own content colors. Phone and car dashboards use their own themed context.
-The phone logo has a small pink/peach gradient; the car dashboard uses flat dark
-surfaces without new animation. No third-party branding or artwork is included.
+The phone has an original vector sunset/palm banner matching the supplied concept,
+the Vice Sunset label, tagline and cyan/pink/peach/lilac destination accents. The
+car dashboard uses flat dark surfaces without the decorative banner or new
+animation. No third-party branding or artwork is included. Existing Settings,
+Favorites and Resume shortcuts remain available beyond the reference composition.
+IPTV/media rows have bright titles, muted subtitles, cyan icons and pink actions;
+navigation uses separate rounded tiles with a rose selected state and cyan focus.
 
 The IPTV screenshot shows the title immediately against the back button. The
 shared title now reserves 8dp on both sides within its existing constrained,

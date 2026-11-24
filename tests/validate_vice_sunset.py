@@ -62,9 +62,21 @@ for token in ['setLayoutParams(t, 0, WRAP_CONTENT)', 'setMarginStart(toIntPx(ctx
 audit = json.loads((root / 'LUMIDRIVE_VICE_AUDIT.json').read_text())
 allowed_java = {'LumiThemeColors.java', 'ToolBarView.java', 'MainActivityPrefs.java',
                 'MainActivityDelegate.java', 'SettingsFragment.java',
-                'LumiDriveDashboard.java', 'LumiDriveAutoHome.java'}
+                'LumiDriveDashboard.java', 'LumiDriveAutoHome.java', 'MediaItemView.java',
+                'NavBarView.java', 'NavButtonView.java'}
 for path in audit['changed_presentation_files']:
     assert '/res/' in path or Path(path).name in allowed_java, path
     assert not path.endswith(('theme_dark.xml', 'theme_light.xml')), path
 assert not any('mirror' in p.lower() or '/media/' in p for p in audit['changed_presentation_files'])
 print('Preference migration, independent car theme, title margins and presentation-only scope passed')
+
+assert contrast('#F8EEFF', '#773E70') >= 4.5
+assert contrast('#B7A6D0', '#302341') >= 4.5
+banner = ET.parse(app / 'res/drawable/lumi_vice_banner.xml').getroot()
+assert banner.tag == 'vector'
+dashboard = (app / 'java/me/aap/fermata/ui/activity/LumiDriveDashboard.java').read_text(encoding='utf-8')
+assert 'if (vice) {\n            ImageView sunset' in dashboard
+assert 'VICE SUNSET' in dashboard and 'Night drive • Neon sunset' in dashboard
+auto = (app / 'java/me/aap/fermata/ui/activity/LumiDriveAutoHome.java').read_text(encoding='utf-8')
+assert 'lumi_vice_banner' not in auto
+print('Reference banner, theme-gated layout and selected navigation contrast passed')

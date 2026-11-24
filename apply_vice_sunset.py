@@ -156,6 +156,9 @@ replace(toolbar, '''\t\t\t\tlp.horizontalWeight = 2;
                 lp.setMarginEnd(toIntPx(ctx, 8));
 \t\t\t\tlp.endToEnd = PARENT_ID;''')
 
+from vice_reference import apply as apply_reference
+apply_reference(root, write, replace)
+
 after = snapshot()
 changed = {p for p in before.keys() | after.keys() if before.get(p) != after.get(p)}
 assert changed <= allowed, changed - allowed
